@@ -1,0 +1,25 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.apiRoutes = void 0;
+const express_1 = require("express");
+const attendance_routes_1 = require("../modules/attendance/attendance.routes");
+const auth_routes_1 = require("../modules/auth/auth.routes");
+const employer_routes_1 = require("../modules/employer/employer.routes");
+const jobApplication_routes_1 = require("../modules/jobApplication/jobApplication.routes");
+const job_routes_1 = require("../modules/job/job.routes");
+const payment_routes_1 = require("../modules/payment/payment.routes");
+const rating_routes_1 = require("../modules/rating/rating.routes");
+const user_routes_1 = require("../modules/user/user.routes");
+const worker_routes_1 = require("../modules/worker/worker.routes");
+const router = (0, express_1.Router)();
+router.use("/auth", auth_routes_1.authRoutes);
+router.use("/users", user_routes_1.userRoutes);
+router.use("/employers", employer_routes_1.employerRoutes);
+router.use("/workers", worker_routes_1.workerRoutes);
+router.use("/jobs", job_routes_1.jobRoutes);
+router.use("/job-applications", jobApplication_routes_1.jobApplicationRoutes);
+router.use("/attendance", attendance_routes_1.attendanceRoutes);
+router.use("/payments", payment_routes_1.paymentRoutes);
+router.use("/ratings", rating_routes_1.ratingRoutes);
+exports.apiRoutes = router;
+//# sourceMappingURL=index.js.map

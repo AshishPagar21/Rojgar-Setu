@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  EMPLOYER
+  WORKER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum JobStatus {
+  OPEN
+  ASSIGNED
+  COMPLETED
+  CANCELLED
+}
+
+enum JobApplicationStatus {
+  APPLIED
+  SELECTED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id               Int      @id @default(autoincrement())
+  mobileNumber     String   @unique @map("mobile_number")
+  role             UserRole
+  isMobileVerified Boolean  @default(true) @map("is_mobile_verified")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  employer        Employer?
+  worker          Worker?
+  ratingsGiven    Rating[]  @relation("ratings_given")
+  ratingsReceived Rating[]  @relation("ratings_received")
+
+  @@map("users")
+}
+
+model Employer {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique @map("user_id")
+  name               String
+  rating             Float    @default(0)
+  totalRatings       Int      @default(0) @map("total_ratings")
+  totalJobsPosted    Int      @default(0) @map("total_jobs_posted")
+  totalJobsCompleted Int      @default(0) @map("total_jobs_completed")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id])
+  jobs     Job[]
+  payments Payment[]
+
+  @@map("employers")
+}
+
+model Worker {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique @map("user_id")
+  name               String
+  age                Int
+  gender             Gender
+  rating             Float    @default(0)
+  totalRatings       Int      @default(0) @map("total_ratings")
+  totalJobsCompleted Int      @default(0) @map("total_jobs_completed")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user            User             @relation(fields: [userId], references: [id])
+  jobApplications JobApplication[]
+  attendance      Attendance[]
+  payments        Payment[]
+
+  @@map("workers")
+}
+
+model Job {
+  id              Int       @id @default(autoincrement())
+  employerId      Int       @map("employer_id")
+  title           String
+  description     String
+  category        String
+  wage            Float
+  jobDate         DateTime  @map("job_date")
+  requiredWorkers Int       @map("required_workers")
+  latitude        Float
+  longitude       Float
+  status          JobStatus @default(OPEN)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  employer        Employer         @relation(fields: [employerId], references: [id])
+  jobApplications JobApplication[]
+  attendance      Attendance[]
+  payments        Payment[]
+  ratings         Rating[]
+
+  @@map("jobs")
+}
+
+model JobApplication {
+  id        Int                  @id @default(autoincrement())
+  jobId     Int                  @map("job_id")
+  workerId  Int                  @map("worker_id")
+  status    JobApplicationStatus @default(APPLIED)
+  appliedAt DateTime             @default(now()) @map("applied_at")
+  updatedAt DateTime             @updatedAt @map("updated_at")
+
+  job    Job    @relation(fields: [jobId], references: [id])
+  worker Worker @relation(fields: [workerId], references: [id])
+
+  @@unique([jobId, workerId])
+  @@map("job_applications")
+}
+
+model Attendance {
+  id           Int       @id @default(autoincrement())
+  jobId        Int       @map("job_id")
+  workerId     Int       @map("worker_id")
+  checkInTime  DateTime? @map("check_in_time")
+  checkOutTime DateTime? @map("check_out_time")
+  totalHours   Float?    @map("total_hours")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  job    Job    @relation(fields: [jobId], references: [id])
+  worker Worker @relation(fields: [workerId], references: [id])
+
+  @@map("attendance")
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  jobId         Int           @map("job_id")
+  employerId    Int           @map("employer_id")
+  workerId      Int           @map("worker_id")
+  amount        Float
+  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  transactionId String?       @map("transaction_id")
+  paidAt        DateTime?     @map("paid_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  job      Job      @relation(fields: [jobId], references: [id])
+  employer Employer @relation(fields: [employerId], references: [id])
+  worker   Worker   @relation(fields: [workerId], references: [id])
+
+  @@map("payments")
+}
+
+model Rating {
+  id          Int      @id @default(autoincrement())
+  jobId       Int      @map("job_id")
+  fromUserId  Int      @map("from_user_id")
+  toUserId    Int      @map("to_user_id")
+  ratingValue Int      @map("rating_value")
+  reviewText  String?  @map("review_text")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  job      Job  @relation(fields: [jobId], references: [id])
+  fromUser User @relation("ratings_given", fields: [fromUserId], references: [id])
+  toUser   User @relation("ratings_received", fields: [toUserId], references: [id])
+
+  @@map("ratings")
+}
