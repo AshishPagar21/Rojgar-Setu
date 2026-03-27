@@ -23,6 +23,8 @@ export interface VerifyOtpPayload {
   name?: string;
   age?: number;
   gender?: Gender;
+  area?: string;
+  workType?: string;
 }
 
 export interface VerifyOtpResponseData {

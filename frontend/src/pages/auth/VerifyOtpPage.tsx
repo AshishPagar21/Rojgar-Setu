@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { OtpForm } from "../../components/auth/OtpForm";
@@ -16,6 +17,7 @@ interface VerifyOtpState {
 }
 
 export const VerifyOtpPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { setAuthData } = useAuth();
@@ -71,7 +73,10 @@ export const VerifyOtpPage = () => {
 
   return (
     <AuthLayout>
-      <PageHeader title="Verify OTP" subtitle={`OTP sent to ${mobileNumber}`} />
+      <PageHeader
+        title={t("auth.verifyOtpTitle")}
+        subtitle={t("auth.otpSentTo", { mobileNumber })}
+      />
       <OtpForm onSubmit={handleSubmit} loading={loading} error={error} />
     </AuthLayout>
   );

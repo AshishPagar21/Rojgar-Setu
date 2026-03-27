@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { MobileNumberForm } from "../../components/auth/MobileNumberForm";
@@ -9,6 +10,7 @@ import { routePaths } from "../../routes/routePaths";
 import { getErrorMessage } from "../../utils/helpers";
 
 export const LoginPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -35,8 +37,8 @@ export const LoginPage = () => {
   return (
     <AuthLayout>
       <PageHeader
-        title="Login"
-        subtitle="Enter your mobile number to get OTP"
+        title={t("auth.loginTitle")}
+        subtitle={t("auth.loginSubtitle")}
       />
       <MobileNumberForm
         onSubmit={handleSubmit}

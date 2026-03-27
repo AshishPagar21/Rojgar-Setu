@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { WorkerRegistrationForm } from "../../components/auth/WorkerRegistrationForm";
@@ -15,6 +16,7 @@ interface RegisterState {
 }
 
 export const WorkerRegisterPage = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { setAuthData } = useAuth();
@@ -30,6 +32,8 @@ export const WorkerRegisterPage = () => {
   const handleSubmit = async (values: {
     name: string;
     age: number;
+    area: string;
+    workType: string;
     gender: "MALE" | "FEMALE" | "OTHER";
   }) => {
     setLoading(true);
@@ -42,6 +46,8 @@ export const WorkerRegisterPage = () => {
         role: "WORKER",
         name: values.name,
         age: values.age,
+        area: values.area,
+        workType: values.workType,
         gender: values.gender,
       });
 
@@ -62,8 +68,8 @@ export const WorkerRegisterPage = () => {
   return (
     <AuthLayout>
       <PageHeader
-        title="Tell us about you"
-        subtitle="Just a few details to start"
+        title={t("auth.workerTitle")}
+        subtitle={t("auth.workerSubtitle")}
       />
       <WorkerRegistrationForm
         onSubmit={handleSubmit}

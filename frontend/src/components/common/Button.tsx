@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "../../utils/helpers";
 
@@ -18,12 +19,14 @@ export const Button = ({
   disabled,
   ...props
 }: ButtonProps) => {
+  const { t } = useTranslation();
+
   const baseStyle =
-    "h-12 rounded-xl px-4 text-base font-semibold transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60";
+    "h-14 rounded-xl px-4 text-base font-semibold transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60";
 
   const variantStyle = {
     primary: "bg-brand-600 text-white hover:bg-brand-700",
-    secondary: "bg-accent-500 text-slate-900 hover:bg-accent-600",
+    secondary: "bg-brand-100 text-brand-700 hover:bg-brand-200",
     outline:
       "border border-slate-300 bg-white text-slate-900 hover:bg-slate-50",
   }[variant];
@@ -34,7 +37,7 @@ export const Button = ({
       disabled={disabled || loading}
       {...props}
     >
-      {loading ? "Please wait..." : children}
+      {loading ? t("common.pleaseWait") : children}
     </button>
   );
 };

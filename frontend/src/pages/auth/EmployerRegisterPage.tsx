@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { EmployerRegistrationForm } from "../../components/auth/EmployerRegistrationForm";
@@ -15,6 +16,7 @@ interface RegisterState {
 }
 
 export const EmployerRegisterPage = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { setAuthData } = useAuth();
@@ -27,7 +29,7 @@ export const EmployerRegisterPage = () => {
     return <Navigate to={routePaths.login} replace />;
   }
 
-  const handleSubmit = async (values: { name: string }) => {
+  const handleSubmit = async (values: { name: string; area: string }) => {
     setLoading(true);
     setError(undefined);
 
@@ -37,6 +39,7 @@ export const EmployerRegisterPage = () => {
         otp: state.otp,
         role: "EMPLOYER",
         name: values.name,
+        area: values.area,
       });
 
       setAuthData({
@@ -56,8 +59,8 @@ export const EmployerRegisterPage = () => {
   return (
     <AuthLayout>
       <PageHeader
-        title="Tell us your name"
-        subtitle="This helps workers know you"
+        title={t("auth.employerTitle")}
+        subtitle={t("auth.employerSubtitle")}
       />
       <EmployerRegistrationForm
         onSubmit={handleSubmit}

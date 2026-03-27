@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { formatMobile } from "../../utils/formatters";
@@ -25,6 +26,8 @@ export const MobileNumberForm = ({
   loading,
   error,
 }: MobileNumberFormProps) => {
+  const { t } = useTranslation();
+
   const {
     register,
     handleSubmit,
@@ -40,10 +43,10 @@ export const MobileNumberForm = ({
   return (
     <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
       <Input
-        label="Mobile Number"
+        label={t("auth.mobileLabel")}
         inputMode="numeric"
         maxLength={10}
-        placeholder="Enter 10 digit mobile number"
+        placeholder={t("auth.mobilePlaceholder")}
         error={errors.mobileNumber?.message}
         {...register("mobileNumber", {
           onChange: (event) => {
@@ -55,7 +58,7 @@ export const MobileNumberForm = ({
       <ErrorMessage message={error} />
 
       <Button type="submit" fullWidth loading={loading}>
-        Get OTP
+        {t("auth.getOtp")}
       </Button>
     </form>
   );

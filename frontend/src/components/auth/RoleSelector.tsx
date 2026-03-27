@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { Button } from "../common/Button";
 
 interface RoleSelectorProps {
@@ -5,10 +7,12 @@ interface RoleSelectorProps {
 }
 
 export const RoleSelector = ({ onSelect }: RoleSelectorProps) => {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-3">
       <Button fullWidth className="h-14" onClick={() => onSelect("EMPLOYER")}>
-        I want workers
+        {t("auth.roleEmployer")}
       </Button>
       <Button
         fullWidth
@@ -16,7 +20,7 @@ export const RoleSelector = ({ onSelect }: RoleSelectorProps) => {
         variant="secondary"
         onClick={() => onSelect("WORKER")}
       >
-        I want work
+        {t("auth.roleWorker")}
       </Button>
     </div>
   );

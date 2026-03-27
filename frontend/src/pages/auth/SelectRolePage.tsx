@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { RoleSelector } from "../../components/auth/RoleSelector";
@@ -11,6 +12,7 @@ interface SelectRoleState {
 }
 
 export const SelectRolePage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -31,7 +33,10 @@ export const SelectRolePage = () => {
 
   return (
     <AuthLayout>
-      <PageHeader title="Choose what you need" subtitle="Select one option" />
+      <PageHeader
+        title={t("auth.selectRoleTitle")}
+        subtitle={t("auth.selectRoleSubtitle")}
+      />
       <RoleSelector onSelect={handleSelect} />
     </AuthLayout>
   );

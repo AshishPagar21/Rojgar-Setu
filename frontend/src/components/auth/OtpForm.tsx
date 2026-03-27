@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { otpSchema } from "../../utils/validators";
@@ -20,6 +21,8 @@ interface OtpFormProps {
 }
 
 export const OtpForm = ({ onSubmit, loading, error }: OtpFormProps) => {
+  const { t } = useTranslation();
+
   const {
     register,
     handleSubmit,
@@ -34,10 +37,10 @@ export const OtpForm = ({ onSubmit, loading, error }: OtpFormProps) => {
   return (
     <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
       <Input
-        label="OTP"
+        label={t("auth.otpLabel")}
         inputMode="numeric"
         maxLength={6}
-        placeholder="Enter 6 digit OTP"
+        placeholder={t("auth.otpPlaceholder")}
         error={errors.otp?.message}
         {...register("otp")}
       />
@@ -45,7 +48,7 @@ export const OtpForm = ({ onSubmit, loading, error }: OtpFormProps) => {
       <ErrorMessage message={error} />
 
       <Button type="submit" fullWidth loading={loading}>
-        Verify OTP
+        {t("auth.verifyOtp")}
       </Button>
     </form>
   );
