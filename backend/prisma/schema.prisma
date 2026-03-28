@@ -144,6 +144,7 @@ model Attendance {
   job    Job    @relation(fields: [jobId], references: [id])
   worker Worker @relation(fields: [workerId], references: [id])
 
+  @@unique([jobId, workerId])
   @@map("attendance")
 }
 
@@ -163,6 +164,7 @@ model Payment {
   employer Employer @relation(fields: [employerId], references: [id])
   worker   Worker   @relation(fields: [workerId], references: [id])
 
+  @@unique([jobId, workerId])
   @@map("payments")
 }
 

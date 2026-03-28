@@ -25,6 +25,13 @@ const errorHandler = (error, _req, res, _next) => {
             error: error.meta,
         });
     }
+    if (error instanceof client_1.Prisma.PrismaClientInitializationError) {
+        return res.status(constants_1.HTTP_STATUS.SERVICE_UNAVAILABLE).json({
+            success: false,
+            message: "Database is temporarily unavailable",
+            error: env_1.env.NODE_ENV === "development" ? error.message : undefined,
+        });
+    }
     const message = error instanceof Error ? error.message : "Internal server error";
     return res.status(constants_1.HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         success: false,

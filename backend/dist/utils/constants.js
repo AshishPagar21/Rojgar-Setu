@@ -12,6 +12,7 @@ exports.HTTP_STATUS = {
     NOT_FOUND: 404,
     CONFLICT: 409,
     UNPROCESSABLE_ENTITY: 422,
+    SERVICE_UNAVAILABLE: 503,
     INTERNAL_SERVER_ERROR: 500,
 };
 //# sourceMappingURL=constants.js.map

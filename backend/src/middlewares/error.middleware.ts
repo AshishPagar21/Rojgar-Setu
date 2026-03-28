@@ -35,6 +35,14 @@ export const errorHandler = (
       });
   }
 
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return res.status(HTTP_STATUS.SERVICE_UNAVAILABLE).json({
+      success: false,
+      message: "Database is temporarily unavailable",
+      error: env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+
   const message =
     error instanceof Error ? error.message : "Internal server error";
 
