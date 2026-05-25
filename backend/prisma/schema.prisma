@@ -101,6 +101,9 @@ model Job {
   wage            Float
   jobDate         DateTime  @map("job_date")
   requiredWorkers Int       @map("required_workers")
+  locationLine1   String?   @map("location_line1")
+  city            String?
+  landmark        String?
   latitude        Float
   longitude       Float
   status          JobStatus @default(OPEN)

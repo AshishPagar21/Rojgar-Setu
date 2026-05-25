@@ -1,8 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.HTTP_STATUS = exports.OTP_EXPIRY_MS = exports.MOBILE_NUMBER_REGEX = void 0;
+exports.HTTP_STATUS = exports.OTP_MAX_ATTEMPTS = exports.OTP_RESEND_DELAY_MS = exports.OTP_EXPIRY_MS = exports.MOBILE_NUMBER_REGEX = void 0;
+const env_1 = require("../config/env");
 exports.MOBILE_NUMBER_REGEX = /^[6-9]\d{9}$/;
-exports.OTP_EXPIRY_MS = 5 * 60 * 1000;
+exports.OTP_EXPIRY_MS = env_1.env.OTP_EXPIRY_MS;
+exports.OTP_RESEND_DELAY_MS = env_1.env.OTP_RESEND_DELAY_MS;
+exports.OTP_MAX_ATTEMPTS = env_1.env.OTP_MAX_ATTEMPTS;
 exports.HTTP_STATUS = {
     OK: 200,
     CREATED: 201,

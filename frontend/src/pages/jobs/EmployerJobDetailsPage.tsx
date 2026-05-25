@@ -7,6 +7,14 @@ import { StatusBadge } from "../../components/common/StatusBadge";
 import { jobService } from "../../modules/job/job.service";
 import { jobApplicationService } from "../../modules/jobApplication/jobApplication.service";
 
+const extractLocation = (description: string) => {
+  const match = description.match(/Location:\s*([^\n]+)/i);
+  return match?.[1]?.trim();
+};
+
+const cleanDescription = (description: string) =>
+  description.replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
+
 export const EmployerJobDetailsPage = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
@@ -129,8 +137,22 @@ export const EmployerJobDetailsPage = () => {
 
         <div>
           <p className="text-sm font-medium text-slate-900">Description</p>
-          <p className="mt-2 text-sm text-slate-700">{job.description}</p>
+          <p className="mt-2 text-sm text-slate-700">
+            {cleanDescription(job.description)}
+          </p>
         </div>
+
+        {extractLocation(job.description) && (
+          <>
+            <hr className="my-4" />
+            <div>
+              <p className="text-sm font-medium text-slate-900">Location</p>
+              <p className="mt-2 text-sm text-slate-700">
+                {extractLocation(job.description)}
+              </p>
+            </div>
+          </>
+        )}
 
         <hr className="my-4" />
 

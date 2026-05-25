@@ -1,6 +1,10 @@
+import { env } from "../config/env";
+
 export const MOBILE_NUMBER_REGEX = /^[6-9]\d{9}$/;
 
-export const OTP_EXPIRY_MS = 5 * 60 * 1000;
+export const OTP_EXPIRY_MS = env.OTP_EXPIRY_MS;
+export const OTP_RESEND_DELAY_MS = env.OTP_RESEND_DELAY_MS;
+export const OTP_MAX_ATTEMPTS = env.OTP_MAX_ATTEMPTS;
 
 export const HTTP_STATUS = {
   OK: 200,

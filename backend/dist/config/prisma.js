@@ -9,7 +9,14 @@ const globalForPrisma = globalThis;
 const pool = globalForPrisma.prismaPool ??
     new pg_1.Pool({
         connectionString: env_1.env.DATABASE_URL,
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+        allowExitOnIdle: true,
     });
+pool.on("error", (err) => {
+    console.error("Unexpected connection pool error:", err);
+});
 const adapter = new adapter_pg_1.PrismaPg(pool);
 exports.prisma = globalForPrisma.prisma ??
     new client_1.PrismaClient({

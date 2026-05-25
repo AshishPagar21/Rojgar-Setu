@@ -7,6 +7,14 @@ import { JobCard } from "../../components/common/JobCard";
 import { PageHeader } from "../../components/common/PageHeader";
 import { jobService } from "../../modules/job/job.service";
 
+const extractLocation = (description: string) => {
+  const match = description.match(/Location:\s*([^\n]+)/i);
+  return match?.[1]?.trim();
+};
+
+const cleanDescription = (description: string) =>
+  description.replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
+
 export const MyJobsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -75,7 +83,8 @@ export const MyJobsPage = () => {
               key={job.id}
               id={job.id}
               title={job.title}
-              description={job.description}
+              description={cleanDescription(job.description)}
+              location={extractLocation(job.description)}
               category={job.category}
               wage={job.wage}
               jobDate={job.jobDate}

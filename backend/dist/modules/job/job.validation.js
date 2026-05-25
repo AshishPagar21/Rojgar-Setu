@@ -17,8 +17,8 @@ exports.createJobSchema = zod_1.z.object({
             .number()
             .int()
             .positive("Required workers must be at least 1"),
-        latitude: zod_1.z.number().min(-90).max(90),
-        longitude: zod_1.z.number().min(-180).max(180),
+        city: zod_1.z.string().min(2, "City is required"),
+        landmark: zod_1.z.string().min(2, "Landmark is required"),
     }),
 });
 exports.getOpenJobsSchema = zod_1.z.object({
@@ -39,7 +39,7 @@ exports.completeJobSchema = zod_1.z.object({
 });
 exports.getJobByIdSchema = zod_1.z.object({
     params: zod_1.z.object({
-        jobId: zod_1.z.string().transform((v) => parseInt(v, 10)),
+        jobId: zod_1.z.coerce.number().int().positive("Invalid job id"),
     }),
 });
 //# sourceMappingURL=job.validation.js.map

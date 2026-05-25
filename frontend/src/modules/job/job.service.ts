@@ -1,19 +1,4 @@
-import axios from "axios";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-});
-
-// Add token to requests
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("rojgar_setu_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+import { apiClient } from "../../services/apiClient";
 
 export interface CreateJobPayload {
   title: string;
@@ -22,6 +7,9 @@ export interface CreateJobPayload {
   wage: number;
   jobDate: string;
   requiredWorkers: number;
+  locationLine1: string;
+  city: string;
+  landmark: string;
   latitude: number;
   longitude: number;
 }
@@ -37,8 +25,23 @@ export const jobService = {
     return response.data.data;
   },
 
-  async getOpenJobs(filters?: { category?: string; date?: string }) {
+  async getOpenJobs(filters?: {
+    category?: string;
+    date?: string;
+    latitude?: number;
+    longitude?: number;
+    radius?: number;
+  }) {
     const response = await apiClient.get("/jobs/open", { params: filters });
+    return response.data.data;
+  },
+
+  async getNearbyJobs(filters: {
+    latitude: number;
+    longitude: number;
+    radius?: number;
+  }) {
+    const response = await apiClient.get("/jobs/nearby", { params: filters });
     return response.data.data;
   },
 

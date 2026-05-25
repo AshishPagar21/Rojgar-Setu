@@ -8,7 +8,23 @@ const otp_1 = require("../../utils/otp");
 const response_1 = require("../../utils/response");
 const sendOtp = async (payload) => {
     const { mobileNumber } = payload;
-    const otpData = (0, otp_1.generateOtp)(mobileNumber);
+    const otpData = await (0, otp_1.generateOtp)(mobileNumber);
+    return {
+        mobileNumber,
+        expiresInSeconds: otpData.expiresInSeconds,
+        otp: process.env.NODE_ENV === "production" ? undefined : otpData.otp,
+    };
+};
+const resendOtp = async (payload) => {
+    const { mobileNumber } = payload;
+    // Check if resend is allowed
+    if (!(0, otp_1.canResendOtp)(mobileNumber)) {
+        const waitTime = (0, otp_1.getResendWaitTime)(mobileNumber);
+        const waitSeconds = Math.ceil(waitTime / 1000);
+        throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, `Please wait ${waitSeconds} seconds before requesting a new OTP`);
+    }
+    // Generate and send new OTP
+    const otpData = await (0, otp_1.generateOtp)(mobileNumber);
     return {
         mobileNumber,
         expiresInSeconds: otpData.expiresInSeconds,
@@ -21,13 +37,24 @@ const verifyOtpAndLogin = async (payload) => {
     if (!isOtpValid) {
         throw new response_1.ApiError(constants_1.HTTP_STATUS.UNAUTHORIZED, "Invalid or expired OTP");
     }
-    const existingUser = await prisma_1.prisma.user.findUnique({
-        where: { mobileNumber },
-        include: {
-            employer: true,
-            worker: true,
-        },
-    });
+    let existingUser;
+    try {
+        existingUser = await prisma_1.prisma.user.findUnique({
+            where: { mobileNumber },
+            include: {
+                employer: true,
+                worker: true,
+            },
+        });
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes("Can't reach database") ||
+            message.includes("connection")) {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.INTERNAL_SERVER_ERROR, "Database connection failed. Please try again later.");
+        }
+        throw error;
+    }
     if (existingUser) {
         const token = (0, jwt_1.generateToken)({
             userId: existingUser.id,
@@ -99,6 +126,7 @@ const verifyOtpAndLogin = async (payload) => {
 };
 exports.authService = {
     sendOtp,
+    resendOtp,
     verifyOtpAndLogin,
 };
 //# sourceMappingURL=auth.service.js.map

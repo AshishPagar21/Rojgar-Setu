@@ -4,6 +4,7 @@ interface JobCardProps {
   id: number;
   title: string;
   description: string;
+  location?: string;
   category: string;
   wage: number;
   jobDate: string;
@@ -20,6 +21,7 @@ export const JobCard: React.FC<JobCardProps> = ({
   id,
   title,
   description,
+  location,
   category,
   wage,
   jobDate,
@@ -83,6 +85,14 @@ export const JobCard: React.FC<JobCardProps> = ({
           <span className="text-slate-500">Workers Needed</span>
           <p className="font-medium text-slate-900">{requiredWorkers}</p>
         </div>
+        {location && (
+          <div className="col-span-2">
+            <span className="text-slate-500">Location</span>
+            <p className="font-medium text-slate-900 line-clamp-1">
+              {location}
+            </p>
+          </div>
+        )}
       </div>
 
       {employerRating !== undefined && (

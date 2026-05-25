@@ -9,6 +9,14 @@ import { jobApplicationService } from "../../modules/jobApplication/jobApplicati
 import { attendanceService } from "../../modules/attendance/attendance.service";
 import { getErrorMessage } from "../../utils/helpers";
 
+const extractLocation = (description: string) => {
+  const match = description.match(/Location:\s*([^\n]+)/i);
+  return match?.[1]?.trim();
+};
+
+const cleanDescription = (description: string) =>
+  description.replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
+
 export const WorkerJobDetailsPage = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const [job, setJob] = useState<any>(null);
@@ -164,8 +172,22 @@ export const WorkerJobDetailsPage = () => {
 
         <div>
           <p className="text-sm font-medium text-slate-900">Description</p>
-          <p className="mt-2 text-sm text-slate-700">{job.description}</p>
+          <p className="mt-2 text-sm text-slate-700">
+            {cleanDescription(job.description)}
+          </p>
         </div>
+
+        {extractLocation(job.description) && (
+          <>
+            <hr className="my-4" />
+            <div>
+              <p className="text-sm font-medium text-slate-900">Location</p>
+              <p className="mt-2 text-sm text-slate-700">
+                {extractLocation(job.description)}
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Application Status */}

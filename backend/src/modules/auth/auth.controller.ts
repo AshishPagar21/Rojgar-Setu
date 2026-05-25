@@ -19,6 +19,20 @@ const sendOtp = async (
   }
 };
 
+const resendOtp = async (
+  req: Request<unknown, unknown, SendOtpRequestBody>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const result = await authService.resendOtp(req.body);
+
+    sendSuccess(res, HTTP_STATUS.OK, "OTP resent successfully", result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const verifyOtp = async (
   req: Request<unknown, unknown, VerifyOtpRequestBody>,
   res: Response,
@@ -40,5 +54,6 @@ const verifyOtp = async (
 
 export const authController = {
   sendOtp,
+  resendOtp,
   verifyOtp,
 };

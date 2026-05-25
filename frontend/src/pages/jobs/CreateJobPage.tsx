@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { Button } from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
+import { LocationPicker } from "../../components/common/LocationPicker";
 import { PageHeader } from "../../components/common/PageHeader";
 import { Select } from "../../components/common/Select";
 import { jobService } from "../../modules/job/job.service";
@@ -15,11 +16,17 @@ const schema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
   category: z.string().min(1, "Category is required"),
-  wage: z.number().positive("Wage is required"),
+  wage: z.coerce.number().positive("Wage must be greater than 0"),
   jobDate: z.string().min(1, "Job date is required"),
-  requiredWorkers: z.number().positive("Required workers is required"),
-  latitude: z.number(),
-  longitude: z.number(),
+  requiredWorkers: z.coerce
+    .number()
+    .int("Workers must be a whole number")
+    .positive("Required workers must be at least 1"),
+  locationLine1: z.string().min(2, "Location detail is required"),
+  city: z.string().min(2, "City is required"),
+  landmark: z.string().min(2, "Landmark is required"),
+  latitude: z.coerce.number().min(-90).max(90),
+  longitude: z.coerce.number().min(-180).max(180),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -33,19 +40,30 @@ export const CreateJobPage = () => {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
+    setValue,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: "",
       description: "",
       category: "Construction",
-      wage: 0,
+      wage: undefined,
       jobDate: "",
-      requiredWorkers: 0,
-      latitude: 0,
-      longitude: 0,
+      requiredWorkers: undefined,
+      locationLine1: "",
+      city: "",
+      landmark: "",
+      latitude: 20.5937, // India center
+      longitude: 78.9629,
     },
   });
+
+  const latitude = watch("latitude");
+  const longitude = watch("longitude");
+  const locationLine1 = watch("locationLine1");
+  const city = watch("city");
+  const landmark = watch("landmark");
 
   const categories = [
     { label: "Construction", value: "Construction" },
@@ -58,6 +76,23 @@ export const CreateJobPage = () => {
     { label: "Masonry", value: "Masonry" },
     { label: "Other", value: "Other" },
   ];
+
+  const handleLocationChange = (lat: number, lon: number) => {
+    setValue("latitude", lat);
+    setValue("longitude", lon);
+  };
+
+  const handleLocationLine1Change = (value: string) => {
+    setValue("locationLine1", value, { shouldValidate: true });
+  };
+
+  const handleCityChange = (value: string) => {
+    setValue("city", value, { shouldValidate: true });
+  };
+
+  const handleLandmarkChange = (value: string) => {
+    setValue("landmark", value, { shouldValidate: true });
+  };
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
@@ -77,8 +112,13 @@ export const CreateJobPage = () => {
     <div className="space-y-6">
       <PageHeader
         title="Create New Job"
-        subtitle="Post a job and find workers"
+        subtitle="Post a job with accurate location details"
       />
+
+      <div className="rounded bg-brand-50 p-3 text-sm text-brand-700">
+        📍 Set your job location on the map. Workers within 10km radius will see
+        your job posting.
+      </div>
 
       {error && (
         <div className="rounded bg-red-50 p-3 text-sm text-red-600">
@@ -137,25 +177,42 @@ export const CreateJobPage = () => {
           type="number"
           placeholder="e.g., 3"
           error={errors.requiredWorkers?.message}
-          {...register("requiredWorkers", { valueAsNumber: true })}
+          {...register("requiredWorkers")}
         />
 
         <Input
-          label="Latitude"
-          type="number"
-          step="0.000001"
-          placeholder="e.g., 28.7041"
-          error={errors.latitude?.message}
-          {...register("latitude", { valueAsNumber: true })}
+          label="Street / Area (First Part)"
+          placeholder="e.g., Hingane Home Colony Road, Mavale vasti"
+          error={errors.locationLine1?.message}
+          {...register("locationLine1")}
         />
 
         <Input
-          label="Longitude"
-          type="number"
-          step="0.000001"
-          placeholder="e.g., 77.1025"
-          error={errors.longitude?.message}
-          {...register("longitude", { valueAsNumber: true })}
+          label="City"
+          placeholder="e.g., Nagpur"
+          error={errors.city?.message}
+          {...register("city")}
+        />
+
+        <Input
+          label="Landmark / Area"
+          placeholder="e.g., Near Bus Stand"
+          error={errors.landmark?.message}
+          {...register("landmark")}
+        />
+
+        {/* Location Picker */}
+        <LocationPicker
+          latitude={latitude}
+          longitude={longitude}
+          locationLine1={locationLine1}
+          city={city}
+          landmarkArea={landmark}
+          onLocationChange={handleLocationChange}
+          onLocationLine1Change={handleLocationLine1Change}
+          onCityChange={handleCityChange}
+          onLandmarkAreaChange={handleLandmarkChange}
+          error={errors.latitude?.message || errors.longitude?.message}
         />
 
         <div className="flex gap-3 pt-4">

@@ -7,6 +7,7 @@ import { sendOtpSchema, verifyOtpSchema } from "./auth.validation";
 const router = Router();
 
 router.post("/send-otp", validate(sendOtpSchema), authController.sendOtp);
+router.post("/resend-otp", validate(sendOtpSchema), authController.resendOtp);
 router.post("/verify-otp", validate(verifyOtpSchema), authController.verifyOtp);
 
 export const authRoutes = router;

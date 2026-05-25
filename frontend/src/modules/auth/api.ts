@@ -17,6 +17,16 @@ export const sendOtp = async (
   return response.data;
 };
 
+export const resendOtp = async (
+  payload: SendOtpPayload,
+): Promise<SendOtpApiResponse> => {
+  const response = await apiClient.post<SendOtpApiResponse>(
+    "/auth/resend-otp",
+    payload,
+  );
+  return response.data;
+};
+
 export const verifyOtp = async (
   payload: VerifyOtpPayload,
 ): Promise<VerifyOtpApiResponse> => {

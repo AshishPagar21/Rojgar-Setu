@@ -13,6 +13,15 @@ const sendOtp = async (req, res, next) => {
         next(error);
     }
 };
+const resendOtp = async (req, res, next) => {
+    try {
+        const result = await auth_service_1.authService.resendOtp(req.body);
+        (0, response_1.sendSuccess)(res, constants_1.HTTP_STATUS.OK, "OTP resent successfully", result);
+    }
+    catch (error) {
+        next(error);
+    }
+};
 const verifyOtp = async (req, res, next) => {
     try {
         const result = await auth_service_1.authService.verifyOtpAndLogin(req.body);
@@ -24,6 +33,7 @@ const verifyOtp = async (req, res, next) => {
 };
 exports.authController = {
     sendOtp,
+    resendOtp,
     verifyOtp,
 };
 //# sourceMappingURL=auth.controller.js.map

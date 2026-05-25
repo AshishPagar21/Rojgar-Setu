@@ -16,8 +16,11 @@ const router = Router();
 
 // Public endpoints
 router.get("/open", validate(getOpenJobsSchema), jobController.getOpenJobs);
-
-router.get("/:jobId", validate(getJobByIdSchema), jobController.getJobById);
+router.get(
+  "/nearby",
+  validate(getOpenJobsSchema),
+  jobController.getNearbyJobs,
+);
 
 // Protected endpoints - Employer only
 router.post(
@@ -34,6 +37,8 @@ router.get(
   authorizeRoles("EMPLOYER"),
   jobController.getMyJobs,
 );
+
+router.get("/:jobId", validate(getJobByIdSchema), jobController.getJobById);
 
 router.patch(
   "/:jobId/cancel",

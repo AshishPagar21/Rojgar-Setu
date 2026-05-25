@@ -87,6 +87,12 @@ export const jobController = {
 
   /**
    * GET /api/jobs/open - Get all open jobs
+   * Query parameters:
+   * - category: job category
+   * - date: job date (ISO format)
+   * - latitude: worker's latitude (for distance filtering)
+   * - longitude: worker's longitude (for distance filtering)
+   * - radius: search radius in km (default 10)
    */
   async getOpenJobs(
     req: Request,
@@ -97,10 +103,44 @@ export const jobController = {
       const filters: JobFilters = {
         category: req.query.category as string,
         date: req.query.date as string,
+        latitude: req.query.latitude
+          ? parseFloat(req.query.latitude as string)
+          : undefined,
+        longitude: req.query.longitude
+          ? parseFloat(req.query.longitude as string)
+          : undefined,
+        radius: req.query.radius ? parseFloat(req.query.radius as string) : 10, // Default 10km
       };
 
       const jobs = await jobService.getOpenJobs(filters);
       sendSuccess(res, HTTP_STATUS.OK, "Jobs retrieved successfully", jobs);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * GET /api/jobs/nearby - Get nearby open jobs (returns reduced job fields with distance)
+   * Query parameters: latitude, longitude, radius
+   */
+  async getNearbyJobs(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const filters: JobFilters = {
+        latitude: req.query.latitude
+          ? parseFloat(req.query.latitude as string)
+          : undefined,
+        longitude: req.query.longitude
+          ? parseFloat(req.query.longitude as string)
+          : undefined,
+        radius: req.query.radius ? parseFloat(req.query.radius as string) : 10,
+      };
+
+      const jobs = await jobService.getNearbyJobs(filters);
+      sendSuccess(res, HTTP_STATUS.OK, "Nearby jobs retrieved successfully", jobs);
     } catch (error) {
       next(error);
     }

@@ -8,6 +8,7 @@ import { VerifyOtpPage } from "../pages/auth/VerifyOtpPage";
 import { WorkerRegisterPage } from "../pages/auth/WorkerRegisterPage";
 import { AttendanceHistoryPage } from "../pages/attendance/AttendanceHistoryPage";
 import { NotFoundPage } from "../pages/common/NotFoundPage";
+import { ProfilePage } from "../pages/common/ProfilePage";
 import { UnauthorizedPage } from "../pages/common/UnauthorizedPage";
 import { AdminDashboardPage } from "../pages/dashboard/AdminDashboardPage";
 import { EmployerDashboardPage } from "../pages/dashboard/EmployerDashboardPage";
@@ -49,6 +50,8 @@ export const AppRouter = () => {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<ProtectedLayout />}>
+          <Route path={routePaths.profile} element={<ProfilePage />} />
+
           <Route element={<ProtectedRoute allowedRoles={["EMPLOYER"]} />}>
             <Route
               path={routePaths.dashboardEmployer}

@@ -4,6 +4,12 @@ exports.jobService = void 0;
 const prisma_1 = require("../../config/prisma");
 const constants_1 = require("../../utils/constants");
 const response_1 = require("../../utils/response");
+const buildDescriptionWithLocation = (payload) => {
+    const baseDescription = payload.description.trim();
+    const city = payload.city.trim();
+    const landmark = payload.landmark.trim();
+    return `${baseDescription}\n\nLocation: ${city}, ${landmark}`;
+};
 exports.jobService = {
     /**
      * Create a new job
@@ -13,13 +19,14 @@ exports.jobService = {
             data: {
                 employerId,
                 title: payload.title,
-                description: payload.description,
+                description: buildDescriptionWithLocation(payload),
                 category: payload.category,
                 wage: payload.wage,
                 jobDate: new Date(payload.jobDate),
                 requiredWorkers: payload.requiredWorkers,
-                latitude: payload.latitude,
-                longitude: payload.longitude,
+                // Keep coordinates neutral until geo-location is implemented in UI.
+                latitude: 0,
+                longitude: 0,
                 status: "OPEN",
             },
         });

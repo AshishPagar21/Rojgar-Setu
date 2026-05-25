@@ -4,14 +4,44 @@ import { prisma } from "../../config/prisma";
 import type { AuthResult } from "../../types/common.types";
 import { HTTP_STATUS } from "../../utils/constants";
 import { generateToken } from "../../utils/jwt";
-import { consumeOtp, generateOtp, verifyOtpWithMode } from "../../utils/otp";
+import {
+  canResendOtp,
+  consumeOtp,
+  generateOtp,
+  getResendWaitTime,
+  verifyOtpWithMode,
+} from "../../utils/otp";
 import { ApiError } from "../../utils/response";
 import type { SendOtpRequestBody, VerifyOtpRequestBody } from "./auth.types";
 
 const sendOtp = async (payload: SendOtpRequestBody) => {
   const { mobileNumber } = payload;
 
-  const otpData = generateOtp(mobileNumber);
+  const otpData = await generateOtp(mobileNumber);
+
+  return {
+    mobileNumber,
+    expiresInSeconds: otpData.expiresInSeconds,
+    otp: process.env.NODE_ENV === "production" ? undefined : otpData.otp,
+  };
+};
+
+const resendOtp = async (payload: SendOtpRequestBody) => {
+  const { mobileNumber } = payload;
+
+  // Check if resend is allowed
+  if (!canResendOtp(mobileNumber)) {
+    const waitTime = getResendWaitTime(mobileNumber);
+    const waitSeconds = Math.ceil(waitTime / 1000);
+
+    throw new ApiError(
+      HTTP_STATUS.BAD_REQUEST,
+      `Please wait ${waitSeconds} seconds before requesting a new OTP`,
+    );
+  }
+
+  // Generate and send new OTP
+  const otpData = await generateOtp(mobileNumber);
 
   return {
     mobileNumber,
@@ -31,13 +61,28 @@ const verifyOtpAndLogin = async (
     throw new ApiError(HTTP_STATUS.UNAUTHORIZED, "Invalid or expired OTP");
   }
 
-  const existingUser = await prisma.user.findUnique({
-    where: { mobileNumber },
-    include: {
-      employer: true,
-      worker: true,
-    },
-  });
+  let existingUser;
+  try {
+    existingUser = await prisma.user.findUnique({
+      where: { mobileNumber },
+      include: {
+        employer: true,
+        worker: true,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (
+      message.includes("Can't reach database") ||
+      message.includes("connection")
+    ) {
+      throw new ApiError(
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        "Database connection failed. Please try again later.",
+      );
+    }
+    throw error;
+  }
 
   if (existingUser) {
     const token = generateToken({
@@ -133,5 +178,6 @@ const verifyOtpAndLogin = async (
 
 export const authService = {
   sendOtp,
+  resendOtp,
   verifyOtpAndLogin,
 };
