@@ -73,7 +73,7 @@ export const paymentService = {
               employerId,
               workerId: app.workerId,
               amount: job.wage,
-              paymentStatus: "PENDING",
+              status: "PENDING",
             },
           });
         }),
@@ -104,14 +104,66 @@ export const paymentService = {
 
     const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    return prisma.payment.update({
+    const updatedPayment = await prisma.payment.update({
       where: { id: paymentId },
       data: {
-        paymentStatus: "SUCCESS",
+        employerConfirmed: true,
+        status: payment.workerConfirmed ? "COMPLETED" : "PENDING",
         transactionId,
         paidAt: new Date(),
       },
     });
+
+    if (updatedPayment.status === "COMPLETED") {
+      await prisma.notification.create({
+        data: {
+          userId: payment.workerId,
+          title: "Payment Completed",
+          message: "Your payment has been confirmed by both sides.",
+          type: "PAYMENT_COMPLETED",
+        },
+      });
+    }
+
+    return updatedPayment;
+  },
+
+  async confirmPaymentReceived(paymentId: number, workerId: number) {
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Payment not found");
+    }
+
+    if (payment.workerId !== workerId) {
+      throw new ApiError(
+        HTTP_STATUS.FORBIDDEN,
+        "You can only confirm your own payments",
+      );
+    }
+
+    const updatedPayment = await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        workerConfirmed: true,
+        status: payment.employerConfirmed ? "COMPLETED" : "PENDING",
+      },
+    });
+
+    if (updatedPayment.status === "COMPLETED") {
+      await prisma.notification.create({
+        data: {
+          userId: payment.employerId,
+          title: "Payment Confirmed",
+          message: "The worker confirmed payment receipt.",
+          type: "PAYMENT_COMPLETED",
+        },
+      });
+    }
+
+    return updatedPayment;
   },
 
   /**

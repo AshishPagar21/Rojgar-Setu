@@ -8,6 +8,7 @@ import {
   checkInSchema,
   checkOutSchema,
   getJobAttendanceSchema,
+  markAttendanceSchema,
 } from "./attendance.validation";
 
 const router = Router();
@@ -43,6 +44,14 @@ router.get(
   authorizeRoles("EMPLOYER"),
   validate(getJobAttendanceSchema),
   attendanceController.getJobAttendance,
+);
+
+router.patch(
+  "/job/:jobId/worker/:workerId",
+  authenticate,
+  authorizeRoles("EMPLOYER"),
+  validate(markAttendanceSchema),
+  attendanceController.markAttendance,
 );
 
 export const attendanceRoutes = router;

@@ -30,8 +30,11 @@ export interface WorkerDashboardData {
   worker: {
     id?: number;
     name?: string | null;
+    reliabilityScore?: number;
   };
   totalJobsCompleted: number;
+  reliabilityScore?: number;
+  attendancePercentage?: number;
   totalApplications: number;
   selectedJobsCount: number;
   paymentReceivedCount: number;

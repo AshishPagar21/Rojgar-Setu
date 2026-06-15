@@ -411,6 +411,12 @@ export const LocationPicker = ({
             📍 {locationName}
           </div>
 
+          {fetchingAddress ? (
+            <div className="mt-1 text-xs text-slate-500">
+              Resolving address...
+            </div>
+          ) : null}
+
           <div className="mt-1 text-xs text-slate-500">
             {jobLatitude.toFixed(6)}, {jobLongitude.toFixed(6)}
           </div>

@@ -20,4 +20,19 @@ export const attendanceService = {
     const response = await apiClient.get(`/attendance/job/${jobId}`);
     return response.data.data;
   },
+
+  async markAttendance(
+    jobId: number,
+    workerId: number,
+    payload: {
+      status: "PRESENT" | "ABSENT" | "LEFT_EARLY" | "COMPLETED";
+      notes?: string;
+    },
+  ) {
+    const response = await apiClient.patch(
+      `/attendance/job/${jobId}/worker/${workerId}`,
+      payload,
+    );
+    return response.data.data;
+  },
 };

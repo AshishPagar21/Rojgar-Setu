@@ -82,7 +82,7 @@ export const jobApplicationService = {
    */
   async getWorkerAssignedJobs(workerId: number) {
     return prisma.jobApplication.findMany({
-      where: { workerId, status: "SELECTED" },
+      where: { workerId, status: { in: ["SELECTED", "COMPLETED"] } },
       include: {
         job: {
           include: {
@@ -132,10 +132,15 @@ export const jobApplicationService = {
             rating: true,
             totalRatings: true,
             totalJobsCompleted: true,
+            reliabilityScore: true,
           },
         },
       },
-      orderBy: [{ worker: { rating: "desc" } }, { appliedAt: "desc" }],
+      orderBy: [
+        { worker: { reliabilityScore: "desc" } },
+        { worker: { rating: "desc" } },
+        { appliedAt: "desc" },
+      ],
     });
   },
 
@@ -182,7 +187,18 @@ export const jobApplicationService = {
       // Get current APPLIED applications
       const currentApplications = await tx.jobApplication.findMany({
         where: { jobId },
+        include: {
+          worker: {
+            select: {
+              userId: true,
+            },
+          },
+        },
       });
+
+      const selectedCount = currentApplications.filter(
+        (application) => application.status === "SELECTED",
+      ).length;
 
       // Verify all worker IDs are in APPLIED status
       for (const workerId of workerIds) {
@@ -197,33 +213,34 @@ export const jobApplicationService = {
         }
       }
 
+      if (selectedCount + workerIds.length > job.requiredWorkers) {
+        throw new ApiError(
+          HTTP_STATUS.BAD_REQUEST,
+          `Cannot select more than ${job.requiredWorkers} workers`,
+        );
+      }
+
       // Update selected workers to SELECTED
       await tx.jobApplication.updateMany({
         where: { jobId, workerId: { in: workerIds } },
-        data: { status: "SELECTED" },
+        data: { status: "SELECTED", selectedAt: new Date() },
       });
 
-      // If we have enough selected workers, mark remaining APPLIED as REJECTED
-      if (workerIds.length === job.requiredWorkers) {
-        const appliedWorkerIds = currentApplications
-          .filter(
-            (a) => a.status === "APPLIED" && !workerIds.includes(a.workerId),
-          )
-          .map((a) => a.workerId);
+      await tx.notification.createMany({
+        data: currentApplications
+          .filter((application) => workerIds.includes(application.workerId))
+          .map((application) => ({
+            userId: application.worker.userId,
+            title: "Job Selection",
+            message: `You have been selected for the job: ${job.title}.`,
+            type: "WORKER_SELECTED",
+          })),
+      });
 
-        if (appliedWorkerIds.length > 0) {
-          await tx.jobApplication.updateMany({
-            where: { jobId, workerId: { in: appliedWorkerIds } },
-            data: { status: "REJECTED" },
-          });
-        }
-
-        // Update job status to ASSIGNED
-        await tx.job.update({
-          where: { id: jobId },
-          data: { status: "ASSIGNED" },
-        });
-      }
+      await tx.job.update({
+        where: { id: jobId },
+        data: { status: "ASSIGNED" },
+      });
 
       // Fetch updated applications
       return tx.jobApplication.findMany({
@@ -234,6 +251,7 @@ export const jobApplicationService = {
               id: true,
               name: true,
               rating: true,
+              reliabilityScore: true,
             },
           },
         },

@@ -204,6 +204,21 @@ export const WorkerDashboardPage = () => {
         </div>
       )}
 
+      {dashboard && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StatCard
+            label="Reliability %"
+            value={`${Math.round(dashboard.reliabilityScore ?? dashboard.worker?.reliabilityScore ?? 100)}%`}
+            tone="bg-emerald-500"
+          />
+          <StatCard
+            label="Attendance %"
+            value={`${Math.round(dashboard.attendancePercentage ?? 100)}%`}
+            tone="bg-sky-500"
+          />
+        </div>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2">
         <Button fullWidth onClick={() => navigate("/jobs/open")}>
           {t("dashboard.findWork")}

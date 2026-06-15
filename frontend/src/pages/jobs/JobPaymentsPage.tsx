@@ -37,7 +37,11 @@ export const JobPaymentsPage = () => {
       setMarkingId(paymentId);
       await paymentService.markPaymentSuccess(paymentId);
       setPayments((prev) =>
-        prev.map((p) => (p.id === paymentId ? { ...p, status: "SUCCESS" } : p)),
+        prev.map((p) =>
+          p.id === paymentId
+            ? { ...p, employerConfirmed: true, status: "PENDING" }
+            : p,
+        ),
       );
     } catch (err) {
       setError(getErrorMessage(err));
@@ -57,7 +61,7 @@ export const JobPaymentsPage = () => {
 
   const total = payments.reduce((sum, p) => sum + p.amount, 0);
   const paidAmount = payments
-    .filter((p) => p.status === "SUCCESS")
+    .filter((p) => p.status === "COMPLETED")
     .reduce((sum, p) => sum + p.amount, 0);
 
   return (
@@ -105,7 +109,7 @@ export const JobPaymentsPage = () => {
               </div>
               <div className="flex items-center gap-3">
                 <StatusBadge status={payment.status} />
-                {payment.status === "PENDING" && (
+                {payment.status === "PENDING" && !payment.employerConfirmed && (
                   <Button
                     variant="secondary"
                     onClick={() => handleMarkPaid(payment.id)}

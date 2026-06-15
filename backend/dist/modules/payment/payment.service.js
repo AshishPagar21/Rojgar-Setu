@@ -56,7 +56,7 @@ exports.paymentService = {
                         employerId,
                         workerId: app.workerId,
                         amount: job.wage,
-                        paymentStatus: "PENDING",
+                        status: "PENDING",
                     },
                 });
             }));
@@ -77,14 +77,55 @@ exports.paymentService = {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "You can only update your own payments");
         }
         const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-        return prisma_1.prisma.payment.update({
+        const updatedPayment = await prisma_1.prisma.payment.update({
             where: { id: paymentId },
             data: {
-                paymentStatus: "SUCCESS",
+                employerConfirmed: true,
+                status: payment.workerConfirmed ? "COMPLETED" : "PENDING",
                 transactionId,
                 paidAt: new Date(),
             },
         });
+        if (updatedPayment.status === "COMPLETED") {
+            await prisma_1.prisma.notification.create({
+                data: {
+                    userId: payment.workerId,
+                    title: "Payment Completed",
+                    message: "Your payment has been confirmed by both sides.",
+                    type: "PAYMENT_COMPLETED",
+                },
+            });
+        }
+        return updatedPayment;
+    },
+    async confirmPaymentReceived(paymentId, workerId) {
+        const payment = await prisma_1.prisma.payment.findUnique({
+            where: { id: paymentId },
+        });
+        if (!payment) {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.NOT_FOUND, "Payment not found");
+        }
+        if (payment.workerId !== workerId) {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "You can only confirm your own payments");
+        }
+        const updatedPayment = await prisma_1.prisma.payment.update({
+            where: { id: paymentId },
+            data: {
+                workerConfirmed: true,
+                status: payment.employerConfirmed ? "COMPLETED" : "PENDING",
+            },
+        });
+        if (updatedPayment.status === "COMPLETED") {
+            await prisma_1.prisma.notification.create({
+                data: {
+                    userId: payment.employerId,
+                    title: "Payment Confirmed",
+                    message: "The worker confirmed payment receipt.",
+                    type: "PAYMENT_COMPLETED",
+                },
+            });
+        }
+        return updatedPayment;
     },
     /**
      * Get payments for a specific job (employer view)

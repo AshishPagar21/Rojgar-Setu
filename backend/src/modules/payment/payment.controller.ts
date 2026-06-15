@@ -94,7 +94,51 @@ export const paymentController = {
         paymentId,
         employer.id,
       );
-      sendSuccess(res, HTTP_STATUS.OK, "Payment marked as successful", payment);
+      sendSuccess(
+        res,
+        HTTP_STATUS.OK,
+        "Payment confirmed by employer",
+        payment,
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async confirmPaymentReceived(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: "Unauthorized",
+        });
+        return;
+      }
+
+      const worker = await prisma.worker.findUnique({
+        where: { userId },
+      });
+
+      if (!worker) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({
+          success: false,
+          message: "Worker profile not found",
+        });
+        return;
+      }
+
+      const paymentId = parseInt(req.params.paymentId as string, 10);
+      const payment = await paymentService.confirmPaymentReceived(
+        paymentId,
+        worker.id,
+      );
+
+      sendSuccess(res, HTTP_STATUS.OK, "Payment confirmed by worker", payment);
     } catch (error) {
       next(error);
     }

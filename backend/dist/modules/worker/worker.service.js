@@ -25,8 +25,15 @@ exports.workerService = {
         });
         // Get payment received count
         const paymentReceivedCount = await prisma_1.prisma.payment.count({
-            where: { workerId, paymentStatus: "SUCCESS" },
+            where: { workerId, status: "COMPLETED" },
         });
+        const attendanceRecords = await prisma_1.prisma.attendance.findMany({
+            where: { workerId },
+            select: { status: true },
+        });
+        const attendanceCount = attendanceRecords.length;
+        const attendedCount = attendanceRecords.filter((record) => ["PRESENT", "COMPLETED"].includes(record.status)).length;
+        const attendancePercentage = attendanceCount > 0 ? (attendedCount / attendanceCount) * 100 : 100;
         // Get recent applications
         const recentApplications = await prisma_1.prisma.jobApplication.findMany({
             where: { workerId },
@@ -45,7 +52,7 @@ exports.workerService = {
         });
         // Get recent assigned jobs
         const recentAssignedJobs = await prisma_1.prisma.jobApplication.findMany({
-            where: { workerId, status: "SELECTED" },
+            where: { workerId, status: { in: ["SELECTED", "COMPLETED"] } },
             include: {
                 job: {
                     select: {
@@ -66,6 +73,8 @@ exports.workerService = {
         return {
             worker,
             totalJobsCompleted: worker.totalJobsCompleted,
+            reliabilityScore: worker.reliabilityScore,
+            attendancePercentage,
             totalApplications,
             selectedJobsCount,
             paymentReceivedCount,

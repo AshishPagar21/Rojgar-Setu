@@ -4,17 +4,23 @@ exports.jobService = void 0;
 const prisma_1 = require("../../config/prisma");
 const constants_1 = require("../../utils/constants");
 const response_1 = require("../../utils/response");
+const geolocation_1 = require("../../utils/geolocation");
 const buildDescriptionWithLocation = (payload) => {
     const baseDescription = payload.description.trim();
+    const locationLine1 = payload.locationLine1.trim();
     const city = payload.city.trim();
     const landmark = payload.landmark.trim();
-    return `${baseDescription}\n\nLocation: ${city}, ${landmark}`;
+    return `${baseDescription}\n\nLocation: ${locationLine1}, ${city}, ${landmark}`;
 };
 exports.jobService = {
     /**
      * Create a new job
      */
     async createJob(employerId, payload) {
+        // Validate coordinates
+        if (!payload.latitude || !payload.longitude) {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Location coordinates (latitude and longitude) are required");
+        }
         const job = await prisma_1.prisma.job.create({
             data: {
                 employerId,
@@ -24,9 +30,11 @@ exports.jobService = {
                 wage: payload.wage,
                 jobDate: new Date(payload.jobDate),
                 requiredWorkers: payload.requiredWorkers,
-                // Keep coordinates neutral until geo-location is implemented in UI.
-                latitude: 0,
-                longitude: 0,
+                locationLine1: payload.locationLine1,
+                city: payload.city,
+                landmark: payload.landmark,
+                latitude: payload.latitude,
+                longitude: payload.longitude,
                 status: "OPEN",
             },
         });
@@ -51,6 +59,7 @@ exports.jobService = {
     },
     /**
      * Get all open jobs (for workers to browse)
+     * If worker coordinates are provided, filters jobs within 10km radius
      */
     async getOpenJobs(filters) {
         const where = { status: "OPEN" };
@@ -66,7 +75,7 @@ exports.jobService = {
                 lt: endDate,
             };
         }
-        return prisma_1.prisma.job.findMany({
+        const jobs = await prisma_1.prisma.job.findMany({
             where,
             include: {
                 employer: {
@@ -84,6 +93,58 @@ exports.jobService = {
             },
             orderBy: { createdAt: "desc" },
         });
+        // Filter by distance if worker location is provided
+        if (filters?.latitude && filters?.longitude) {
+            const radius = filters.radius || 10; // Default 10km radius
+            // Calculate distance for each job, filter by radius and sort by nearest
+            const jobsWithDistance = jobs
+                .map((job) => ({
+                ...job,
+                distance: (0, geolocation_1.calculateDistance)(filters.latitude, filters.longitude, job.latitude, job.longitude),
+            }))
+                .filter((j) => j.distance <= radius)
+                .sort((a, b) => a.distance - b.distance);
+            return jobsWithDistance;
+        }
+        return jobs;
+    },
+    /**
+     * Get nearby open jobs within a radius (returns reduced payload with distance)
+     */
+    async getNearbyJobs(filters) {
+        if (!filters?.latitude || !filters?.longitude) {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "latitude and longitude are required");
+        }
+        const radius = filters.radius || 10;
+        // Fetch OPEN jobs (keep includes minimal to avoid heavy payload)
+        const jobs = await prisma_1.prisma.job.findMany({
+            where: { status: "OPEN" },
+            select: {
+                id: true,
+                title: true,
+                city: true,
+                landmark: true,
+                wage: true,
+                latitude: true,
+                longitude: true,
+                createdAt: true,
+            },
+            orderBy: { createdAt: "desc" },
+        });
+        const jobsWithDistance = jobs
+            .map((job) => ({
+            id: job.id,
+            title: job.title,
+            city: job.city,
+            landmark: job.landmark,
+            wage: job.wage,
+            latitude: job.latitude,
+            longitude: job.longitude,
+            distance: (0, geolocation_1.calculateDistance)(filters.latitude, filters.longitude, job.latitude, job.longitude),
+        }))
+            .filter((j) => j.distance <= radius)
+            .sort((a, b) => a.distance - b.distance);
+        return jobsWithDistance;
     },
     /**
      * Get single job details
@@ -166,6 +227,10 @@ exports.jobService = {
             const updatedJob = await tx.job.update({
                 where: { id: jobId },
                 data: { status: "COMPLETED" },
+            });
+            await tx.jobApplication.updateMany({
+                where: { jobId, status: "SELECTED" },
+                data: { status: "COMPLETED", completedAt: new Date() },
             });
             // Update employer totalJobsCompleted
             await tx.employer.update({

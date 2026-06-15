@@ -11,6 +11,7 @@ const router = (0, express_1.Router)();
 // Employer routes
 router.post("/job/:jobId/create", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(payment_validation_1.createJobPaymentsSchema), payment_controller_1.paymentController.createPaymentsForJob);
 router.patch("/:paymentId/mark-success", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(payment_validation_1.markPaymentSuccessSchema), payment_controller_1.paymentController.markPaymentSuccess);
+router.patch("/:paymentId/confirm", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("WORKER"), (0, validate_middleware_1.validate)(payment_validation_1.markPaymentSuccessSchema), payment_controller_1.paymentController.confirmPaymentReceived);
 router.get("/my-job/:jobId", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(payment_validation_1.getJobPaymentsSchema), payment_controller_1.paymentController.getJobPayments);
 // Worker routes
 router.get("/my", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("WORKER"), payment_controller_1.paymentController.getMyPayments);

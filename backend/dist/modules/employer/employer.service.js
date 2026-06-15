@@ -27,7 +27,7 @@ exports.employerService = {
             where: { employerId },
             include: {
                 jobApplications: {
-                    where: { status: "SELECTED" },
+                    where: { status: { in: ["SELECTED", "COMPLETED"] } },
                     select: { workerId: true },
                 },
             },

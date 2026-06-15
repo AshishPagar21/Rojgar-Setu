@@ -69,15 +69,50 @@ exports.jobController = {
     },
     /**
      * GET /api/jobs/open - Get all open jobs
+     * Query parameters:
+     * - category: job category
+     * - date: job date (ISO format)
+     * - latitude: worker's latitude (for distance filtering)
+     * - longitude: worker's longitude (for distance filtering)
+     * - radius: search radius in km (default 10)
      */
     async getOpenJobs(req, res, next) {
         try {
             const filters = {
                 category: req.query.category,
                 date: req.query.date,
+                latitude: req.query.latitude
+                    ? parseFloat(req.query.latitude)
+                    : undefined,
+                longitude: req.query.longitude
+                    ? parseFloat(req.query.longitude)
+                    : undefined,
+                radius: req.query.radius ? parseFloat(req.query.radius) : 10, // Default 10km
             };
             const jobs = await job_service_1.jobService.getOpenJobs(filters);
             (0, response_1.sendSuccess)(res, constants_1.HTTP_STATUS.OK, "Jobs retrieved successfully", jobs);
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    /**
+     * GET /api/jobs/nearby - Get nearby open jobs (returns reduced job fields with distance)
+     * Query parameters: latitude, longitude, radius
+     */
+    async getNearbyJobs(req, res, next) {
+        try {
+            const filters = {
+                latitude: req.query.latitude
+                    ? parseFloat(req.query.latitude)
+                    : undefined,
+                longitude: req.query.longitude
+                    ? parseFloat(req.query.longitude)
+                    : undefined,
+                radius: req.query.radius ? parseFloat(req.query.radius) : 10,
+            };
+            const jobs = await job_service_1.jobService.getNearbyJobs(filters);
+            (0, response_1.sendSuccess)(res, constants_1.HTTP_STATUS.OK, "Nearby jobs retrieved successfully", jobs);
         }
         catch (error) {
             next(error);

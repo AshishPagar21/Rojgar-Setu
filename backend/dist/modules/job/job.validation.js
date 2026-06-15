@@ -17,14 +17,38 @@ exports.createJobSchema = zod_1.z.object({
             .number()
             .int()
             .positive("Required workers must be at least 1"),
+        locationLine1: zod_1.z.string().min(2, "Location detail is required"),
         city: zod_1.z.string().min(2, "City is required"),
         landmark: zod_1.z.string().min(2, "Landmark is required"),
+        latitude: zod_1.z
+            .number()
+            .min(-90, "Latitude must be between -90 and 90")
+            .max(90, "Latitude must be between -90 and 90"),
+        longitude: zod_1.z
+            .number()
+            .min(-180, "Longitude must be between -180 and 180")
+            .max(180, "Longitude must be between -180 and 180"),
     }),
 });
 exports.getOpenJobsSchema = zod_1.z.object({
     query: zod_1.z.object({
         category: zod_1.z.string().optional(),
         date: zod_1.z.string().optional(),
+        latitude: zod_1.z
+            .string()
+            .transform((v) => parseFloat(v))
+            .refine((v) => !isNaN(v), "Invalid latitude")
+            .optional(),
+        longitude: zod_1.z
+            .string()
+            .transform((v) => parseFloat(v))
+            .refine((v) => !isNaN(v), "Invalid longitude")
+            .optional(),
+        radius: zod_1.z
+            .string()
+            .transform((v) => parseFloat(v))
+            .refine((v) => !isNaN(v) && v > 0, "Radius must be a positive number")
+            .optional(),
     }),
 });
 exports.cancelJobSchema = zod_1.z.object({

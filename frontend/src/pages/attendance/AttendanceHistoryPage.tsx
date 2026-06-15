@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { PageHeader } from "../../components/common/PageHeader";
+import { StatusBadge } from "../../components/common/StatusBadge";
 import { attendanceService } from "../../modules/attendance/attendance.service";
 
 export const AttendanceHistoryPage = () => {
@@ -62,6 +63,9 @@ export const AttendanceHistoryPage = () => {
             >
               <p className="font-medium text-slate-900">{record.job.title}</p>
               <div className="mt-2 space-y-1 text-sm">
+                <p className="text-slate-600">
+                  Status: <StatusBadge status={record.status} />
+                </p>
                 <p className="text-slate-600">
                   Check-in: {new Date(record.checkInTime).toLocaleTimeString()}
                 </p>

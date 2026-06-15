@@ -13,6 +13,11 @@ export const paymentService = {
     return response.data.data;
   },
 
+  async confirmPaymentReceived(paymentId: number) {
+    const response = await apiClient.patch(`/payments/${paymentId}/confirm`);
+    return response.data.data;
+  },
+
   async getJobPayments(jobId: number) {
     const response = await apiClient.get(`/payments/my-job/${jobId}`);
     return response.data.data;

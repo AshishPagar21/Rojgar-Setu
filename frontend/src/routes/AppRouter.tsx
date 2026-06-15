@@ -23,6 +23,7 @@ import { MyJobsPage } from "../pages/jobs/MyJobsPage";
 import { SelectWorkersPage } from "../pages/jobs/SelectWorkersPage";
 import { WorkerJobDetailsPage } from "../pages/jobs/WorkerJobDetailsPage";
 import { PaymentHistoryPage } from "../pages/payment/PaymentHistoryPage";
+import { NotificationsPage } from "../pages/notifications/NotificationsPage";
 import { ReceivedRatingsPage } from "../pages/rating/ReceivedRatingsPage";
 import { SplashPage } from "../pages/SplashPage";
 import { ProtectedRoute } from "./ProtectedRoute";
@@ -91,6 +92,17 @@ export const AppRouter = () => {
             <Route
               path={routePaths.dashboardAdmin}
               element={<AdminDashboardPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN", "EMPLOYER", "WORKER"]} />
+            }
+          >
+            <Route
+              path={routePaths.notifications}
+              element={<NotificationsPage />}
             />
           </Route>
         </Route>

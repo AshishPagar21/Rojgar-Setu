@@ -135,7 +135,10 @@ export const jobService = {
    */
   async getNearbyJobs(filters: JobFilters) {
     if (!filters?.latitude || !filters?.longitude) {
-      throw new ApiError(HTTP_STATUS.BAD_REQUEST, "latitude and longitude are required");
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        "latitude and longitude are required",
+      );
     }
 
     const radius = filters.radius || 10;
@@ -284,6 +287,11 @@ export const jobService = {
       const updatedJob = await tx.job.update({
         where: { id: jobId },
         data: { status: "COMPLETED" },
+      });
+
+      await tx.jobApplication.updateMany({
+        where: { jobId, status: "SELECTED" },
+        data: { status: "COMPLETED", completedAt: new Date() },
       });
 
       // Update employer totalJobsCompleted

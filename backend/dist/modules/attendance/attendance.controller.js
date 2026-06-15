@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.attendanceController = void 0;
+const prisma_1 = require("../../config/prisma");
 const constants_1 = require("../../utils/constants");
 const response_1 = require("../../utils/response");
 const attendance_service_1 = require("./attendance.service");
-const prisma_1 = require("../../config/prisma");
 exports.attendanceController = {
     /**
      * POST /api/attendance/:jobId/check-in - Worker checks in
@@ -124,6 +124,36 @@ exports.attendanceController = {
             const jobId = parseInt(req.params.jobId, 10);
             const attendance = await attendance_service_1.attendanceService.getJobAttendance(jobId, employer.id);
             (0, response_1.sendSuccess)(res, constants_1.HTTP_STATUS.OK, "Attendance retrieved successfully", attendance);
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    async markAttendance(req, res, next) {
+        try {
+            const userId = req.user?.userId;
+            if (!userId) {
+                res.status(constants_1.HTTP_STATUS.UNAUTHORIZED).json({
+                    success: false,
+                    message: "Unauthorized",
+                });
+                return;
+            }
+            const employer = await prisma_1.prisma.employer.findUnique({
+                where: { userId },
+            });
+            if (!employer) {
+                res.status(constants_1.HTTP_STATUS.NOT_FOUND).json({
+                    success: false,
+                    message: "Employer profile not found",
+                });
+                return;
+            }
+            const jobId = parseInt(req.params.jobId, 10);
+            const workerId = parseInt(req.params.workerId, 10);
+            const { status, notes } = req.body;
+            const attendance = await attendance_service_1.attendanceService.markAttendanceByEmployer(jobId, employer.id, workerId, status, notes);
+            (0, response_1.sendSuccess)(res, constants_1.HTTP_STATUS.OK, "Attendance updated successfully", attendance);
         }
         catch (error) {
             next(error);

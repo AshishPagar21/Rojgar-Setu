@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
+import { attendanceService } from "../../modules/attendance/attendance.service";
 import { jobService } from "../../modules/job/job.service";
 import { jobApplicationService } from "../../modules/jobApplication/jobApplication.service";
 
@@ -15,31 +16,46 @@ const extractLocation = (description: string) => {
 const cleanDescription = (description: string) =>
   description.replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
 
+const getSelectedApplicants = (applicants: any[]) =>
+  applicants.filter((applicant) => applicant.status === "SELECTED");
+
 export const EmployerJobDetailsPage = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const [job, setJob] = useState<any>(null);
   const [applicants, setApplicants] = useState<any[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [action, setAction] = useState<string>();
+
+  const refreshData = async (jobNumber: number) => {
+    const jobData = await jobService.getJobById(jobNumber);
+    setJob(jobData);
+
+    try {
+      const applicantData =
+        await jobApplicationService.getJobApplicants(jobNumber);
+      setApplicants(applicantData);
+    } catch {
+      setApplicants([]);
+    }
+
+    try {
+      const attendanceData =
+        await attendanceService.getJobAttendance(jobNumber);
+      setAttendanceRecords(attendanceData);
+    } catch {
+      setAttendanceRecords([]);
+    }
+  };
 
   useEffect(() => {
     const fetchJob = async () => {
       if (!jobId) return;
       try {
         setLoading(true);
-        const jobData = await jobService.getJobById(Number(jobId));
-        setJob(jobData);
-
-        try {
-          const applicantData = await jobApplicationService.getJobApplicants(
-            Number(jobId),
-          );
-          setApplicants(applicantData);
-        } catch {
-          // No applicants yet
-        }
+        await refreshData(Number(jobId));
       } catch (err) {
         setError("Failed to load job details");
         console.error(err);
@@ -78,6 +94,28 @@ export const EmployerJobDetailsPage = () => {
       setAction(undefined);
     }
   };
+
+  const handleMarkAttendance = async (
+    workerId: number,
+    status: "PRESENT" | "COMPLETED",
+  ) => {
+    if (!jobId) return;
+
+    try {
+      setAction(`${status}-${workerId}`);
+      await attendanceService.markAttendance(Number(jobId), workerId, {
+        status,
+      });
+      await refreshData(Number(jobId));
+    } catch (err) {
+      setError("Failed to update attendance");
+      console.error(err);
+    } finally {
+      setAction(undefined);
+    }
+  };
+
+  const selectedApplicants = getSelectedApplicants(applicants);
 
   if (loading) {
     return (
@@ -170,6 +208,95 @@ export const EmployerJobDetailsPage = () => {
             </p>
           </div>
         </div>
+
+        {selectedApplicants.length > 0 && (
+          <>
+            <hr className="my-4" />
+            <div>
+              <p className="text-sm font-medium text-slate-900 mb-3">
+                Selected Workers Attendance
+              </p>
+              <div className="space-y-3">
+                {selectedApplicants.map((selectedApplicant) => {
+                  const attendance = attendanceRecords.find(
+                    (record) => record.workerId === selectedApplicant.workerId,
+                  );
+                  const hasCheckedIn = Boolean(attendance?.checkInTime);
+                  const hasCheckedOut = Boolean(attendance?.checkOutTime);
+
+                  return (
+                    <div
+                      key={selectedApplicant.id}
+                      className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-slate-900">
+                            {selectedApplicant.worker?.name ?? "Worker"}
+                          </p>
+                          <p className="text-sm text-slate-600">
+                            Reliability:{" "}
+                            {selectedApplicant.worker?.reliabilityScore ?? 0}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Entry:{" "}
+                            {hasCheckedIn
+                              ? new Date(
+                                  attendance.checkInTime,
+                                ).toLocaleTimeString()
+                              : "Not marked"}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Exit:{" "}
+                            {hasCheckedOut
+                              ? new Date(
+                                  attendance.checkOutTime,
+                                ).toLocaleTimeString()
+                              : "Not marked"}
+                          </p>
+                        </div>
+                        <StatusBadge status={selectedApplicant.status} />
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            handleMarkAttendance(
+                              selectedApplicant.workerId,
+                              "PRESENT",
+                            )
+                          }
+                          disabled={hasCheckedIn}
+                          loading={
+                            action === `PRESENT-${selectedApplicant.workerId}`
+                          }
+                        >
+                          Mark Entry
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            handleMarkAttendance(
+                              selectedApplicant.workerId,
+                              "COMPLETED",
+                            )
+                          }
+                          disabled={!hasCheckedIn || hasCheckedOut}
+                          loading={
+                            action === `COMPLETED-${selectedApplicant.workerId}`
+                          }
+                        >
+                          Mark Exit
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Action Buttons */}

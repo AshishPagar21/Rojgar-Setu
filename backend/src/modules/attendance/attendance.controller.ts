@@ -1,9 +1,9 @@
 import type { NextFunction, Request, Response } from "express";
 
+import { prisma } from "../../config/prisma";
 import { HTTP_STATUS } from "../../utils/constants";
 import { sendSuccess } from "../../utils/response";
 import { attendanceService } from "./attendance.service";
-import { prisma } from "../../config/prisma";
 
 export const attendanceController = {
   /**
@@ -163,6 +163,59 @@ export const attendanceController = {
         res,
         HTTP_STATUS.OK,
         "Attendance retrieved successfully",
+        attendance,
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async markAttendance(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: "Unauthorized",
+        });
+        return;
+      }
+
+      const employer = await prisma.employer.findUnique({
+        where: { userId },
+      });
+
+      if (!employer) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({
+          success: false,
+          message: "Employer profile not found",
+        });
+        return;
+      }
+
+      const jobId = parseInt(req.params.jobId as string, 10);
+      const workerId = parseInt(req.params.workerId as string, 10);
+      const { status, notes } = req.body as {
+        status: "PRESENT" | "ABSENT" | "LEFT_EARLY" | "COMPLETED";
+        notes?: string;
+      };
+
+      const attendance = await attendanceService.markAttendanceByEmployer(
+        jobId,
+        employer.id,
+        workerId,
+        status,
+        notes,
+      );
+
+      sendSuccess(
+        res,
+        HTTP_STATUS.OK,
+        "Attendance updated successfully",
         attendance,
       );
     } catch (error) {

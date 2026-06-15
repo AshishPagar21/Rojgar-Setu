@@ -29,6 +29,14 @@ router.patch(
   paymentController.markPaymentSuccess,
 );
 
+router.patch(
+  "/:paymentId/confirm",
+  authenticate,
+  authorizeRoles("WORKER"),
+  validate(markPaymentSuccessSchema),
+  paymentController.confirmPaymentReceived,
+);
+
 router.get(
   "/my-job/:jobId",
   authenticate,

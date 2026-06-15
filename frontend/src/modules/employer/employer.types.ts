@@ -19,3 +19,17 @@ export interface EmployerDashboardData {
   completedJobsCount: number;
   recentJobs: EmployerDashboardRecentJob[];
 }
+
+export interface AdminDashboardData {
+  totalJobs: number;
+  activeWorkers: number;
+  activeEmployers: number;
+  completedJobs: number;
+  pendingDisputes: number;
+  paymentsPending: number;
+  charts: {
+    jobsPerDay: Array<{ date: string; count: number }>;
+    registrations: Array<{ date: string; count: number }>;
+    completionRate: number;
+  };
+}

@@ -9,13 +9,22 @@ import { jobApplicationService } from "../../modules/jobApplication/jobApplicati
 import { attendanceService } from "../../modules/attendance/attendance.service";
 import { getErrorMessage } from "../../utils/helpers";
 
-const extractLocation = (description: string) => {
+const extractLocation = (description?: string | null) => {
+  if (!description) {
+    return undefined;
+  }
+
   const match = description.match(/Location:\s*([^\n]+)/i);
   return match?.[1]?.trim();
 };
 
-const cleanDescription = (description: string) =>
-  description.replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
+const cleanDescription = (description?: string | null) =>
+  (description ?? "").replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
+
+const getSelectedWorkers = (job: any) =>
+  (job?.jobApplications ?? []).filter(
+    (application: any) => application.status === "SELECTED",
+  );
 
 export const WorkerJobDetailsPage = () => {
   const { jobId } = useParams<{ jobId: string }>();
@@ -40,13 +49,15 @@ export const WorkerJobDetailsPage = () => {
           const userApp = apps.find((a: any) => a.jobId === Number(jobId));
           setApplication(userApp);
 
-          // If selected, try to get attendance
+          // If selected, try to get the worker's own attendance record for this job
           if (userApp?.status === "SELECTED") {
             try {
-              const attendanceData = await attendanceService.getJobAttendance(
-                Number(jobId),
+              const attendanceHistory =
+                await attendanceService.getMyAttendance();
+              const jobAttendance = attendanceHistory.find(
+                (record: any) => record.jobId === Number(jobId),
               );
-              setAttendance(attendanceData);
+              setAttendance(jobAttendance ?? null);
             } catch {
               // No attendance yet
             }
@@ -86,8 +97,11 @@ export const WorkerJobDetailsPage = () => {
     try {
       setAction("checking-in");
       await attendanceService.checkIn(Number(jobId));
-      const data = await attendanceService.getJobAttendance(Number(jobId));
-      setAttendance(data);
+      const attendanceHistory = await attendanceService.getMyAttendance();
+      const jobAttendance = attendanceHistory.find(
+        (record: any) => record.jobId === Number(jobId),
+      );
+      setAttendance(jobAttendance ?? null);
     } catch (err) {
       setError(getErrorMessage(err));
       console.error(err);
@@ -101,8 +115,11 @@ export const WorkerJobDetailsPage = () => {
     try {
       setAction("checking-out");
       await attendanceService.checkOut(Number(jobId));
-      const data = await attendanceService.getJobAttendance(Number(jobId));
-      setAttendance(data);
+      const attendanceHistory = await attendanceService.getMyAttendance();
+      const jobAttendance = attendanceHistory.find(
+        (record: any) => record.jobId === Number(jobId),
+      );
+      setAttendance(jobAttendance ?? null);
     } catch (err) {
       setError(getErrorMessage(err));
       console.error(err);
@@ -197,6 +214,38 @@ export const WorkerJobDetailsPage = () => {
             Application Status
           </p>
           <StatusBadge status={application.status} />
+        </div>
+      )}
+
+      {getSelectedWorkers(job).length > 0 && (
+        <div className="rounded-panel bg-white p-5 shadow-panel">
+          <p className="text-sm font-medium text-slate-900 mb-3">
+            Selected Workers
+          </p>
+          <div className="space-y-3">
+            {getSelectedWorkers(job).map((selectedApplication: any) => (
+              <div
+                key={selectedApplication.id}
+                className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900">
+                      {selectedApplication.worker?.name ?? "Worker"}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      Rating: {selectedApplication.worker?.rating ?? 0}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Jobs completed:{" "}
+                      {selectedApplication.worker?.totalJobsCompleted ?? 0}
+                    </p>
+                  </div>
+                  <StatusBadge status={selectedApplication.status} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

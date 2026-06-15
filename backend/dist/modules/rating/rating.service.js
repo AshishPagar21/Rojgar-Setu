@@ -14,20 +14,18 @@ exports.ratingService = {
         if (ratingValue < 1 || ratingValue > 5) {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Rating value must be between 1 and 5");
         }
-        // Verify job exists and is completed
+        // Verify job exists and that the payment flow has completed for the participant pair
         const job = await prisma_1.prisma.job.findUnique({
             where: { id: jobId },
             include: {
                 jobApplications: true,
+                payments: true,
             },
         });
         if (!job) {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.NOT_FOUND, "Job not found");
         }
-        if (job.status !== "COMPLETED") {
-            throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Job must be COMPLETED to add rating");
-        }
-        // Verify rater and ratee have relationship in the job
+        // Verify rater and ratee are valid users
         const fromUserRecord = await prisma_1.prisma.user.findUnique({
             where: { id: fromUserId },
         });
@@ -37,21 +35,38 @@ exports.ratingService = {
         if (!fromUserRecord || !toUserRecord) {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.NOT_FOUND, "User not found");
         }
-        // Employer rating worker: check if worker is selected for job
-        // Worker rating employer: check if worker is selected for job
+        const fromWorker = await prisma_1.prisma.worker.findUnique({
+            where: { userId: fromUserId },
+        });
+        const toWorker = await prisma_1.prisma.worker.findUnique({
+            where: { userId: toUserId },
+        });
+        const toEmployer = await prisma_1.prisma.employer.findUnique({
+            where: { userId: toUserId },
+        });
         if (fromUserRecord.role === "EMPLOYER" && toUserRecord.role === "WORKER") {
-            const workerApplication = job.jobApplications.find((app) => app.status === "SELECTED");
-            if (!workerApplication) {
-                throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "Worker was not selected for this job");
+            const workerApplication = job.jobApplications.find((app) => app.workerId === toWorker?.id && app.status !== "REJECTED");
+            const completedPayment = job.payments.find((payment) => payment.workerId === toWorker?.id && payment.status === "COMPLETED");
+            if (!workerApplication || !completedPayment) {
+                throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "Worker must be selected and payment must be completed before rating");
             }
         }
         else if (fromUserRecord.role === "WORKER" &&
             toUserRecord.role === "EMPLOYER") {
-            if (job.employerId !== toUserId) {
-                throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "Invalid rating relationship");
+            const workerApplication = job.jobApplications.find((app) => app.workerId === fromWorker?.id && app.status !== "REJECTED");
+            const completedPayment = job.payments.find((payment) => payment.workerId === fromWorker?.id &&
+                payment.employerId === toEmployer?.id &&
+                payment.status === "COMPLETED");
+            if (!workerApplication || !completedPayment) {
+                throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "Payment must be completed before rating");
             }
         }
         else {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "Invalid rating relationship");
+        }
+        if (fromUserRecord.role === "WORKER" &&
+            toUserRecord.role === "EMPLOYER" &&
+            job.employerId !== toEmployer?.id) {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "Invalid rating relationship");
         }
         // Check for duplicate rating

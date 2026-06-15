@@ -8,6 +8,7 @@ export const routePaths = {
   dashboardEmployer: "/dashboard/employer",
   dashboardWorker: "/dashboard/worker",
   dashboardAdmin: "/dashboard/admin",
+  notifications: "/notifications",
   profile: "/profile",
   unauthorized: "/unauthorized",
 } as const;

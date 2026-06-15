@@ -36,7 +36,7 @@ export const PaymentHistoryPage = () => {
 
   const totalEarnings = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
   const totalReceived = payments
-    .filter((p) => p.status === "SUCCESS")
+    .filter((p) => p.status === "COMPLETED")
     .reduce((sum, p) => sum + (p.amount || 0), 0);
 
   return (

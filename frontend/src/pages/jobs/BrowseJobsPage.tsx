@@ -7,13 +7,17 @@ import { Select } from "../../components/common/Select";
 import { jobService } from "../../modules/job/job.service";
 import { getCurrentLocation } from "../../utils/geolocation";
 
-const extractLocation = (description: string) => {
+const extractLocation = (description?: string | null) => {
+  if (!description) {
+    return undefined;
+  }
+
   const match = description.match(/Location:\s*([^\n]+)/i);
   return match?.[1]?.trim();
 };
 
-const cleanDescription = (description: string) =>
-  description.replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
+const cleanDescription = (description?: string | null) =>
+  (description ?? "").replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
 
 const calculateDistance = (
   lat1: number,
@@ -174,9 +178,9 @@ export const BrowseJobsPage = () => {
       {jobs.length === 0 ? (
         <div className="rounded-panel bg-white p-8 text-center shadow-panel">
           <p className="text-slate-600">
-              {workerLocation
-                ? `No jobs available within ${radius}km of your location`
-                : "No jobs available"}
+            {workerLocation
+              ? `No jobs available within ${radius}km of your location`
+              : "No jobs available"}
           </p>
         </div>
       ) : (

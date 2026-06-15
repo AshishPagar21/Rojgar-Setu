@@ -2,11 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.apiRoutes = void 0;
 const express_1 = require("express");
+const admin_routes_1 = require("../modules/admin/admin.routes");
 const attendance_routes_1 = require("../modules/attendance/attendance.routes");
 const auth_routes_1 = require("../modules/auth/auth.routes");
+const dispute_routes_1 = require("../modules/dispute/dispute.routes");
 const employer_routes_1 = require("../modules/employer/employer.routes");
 const jobApplication_routes_1 = require("../modules/jobApplication/jobApplication.routes");
 const job_routes_1 = require("../modules/job/job.routes");
+const notification_routes_1 = require("../modules/notification/notification.routes");
 const payment_routes_1 = require("../modules/payment/payment.routes");
 const rating_routes_1 = require("../modules/rating/rating.routes");
 const user_routes_1 = require("../modules/user/user.routes");
@@ -21,5 +24,8 @@ router.use("/job-applications", jobApplication_routes_1.jobApplicationRoutes);
 router.use("/attendance", attendance_routes_1.attendanceRoutes);
 router.use("/payments", payment_routes_1.paymentRoutes);
 router.use("/ratings", rating_routes_1.ratingRoutes);
+router.use("/notifications", notification_routes_1.notificationRoutes);
+router.use("/disputes", dispute_routes_1.disputeRoutes);
+router.use("/admin", admin_routes_1.adminRoutes);
 exports.apiRoutes = router;
 //# sourceMappingURL=index.js.map
