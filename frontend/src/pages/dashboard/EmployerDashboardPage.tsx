@@ -180,6 +180,13 @@ export const EmployerDashboardPage = () => {
         >
           {t("dashboard.viewAllJobs")}
         </Button>
+        <Button
+          fullWidth
+          variant="outline"
+          onClick={() => navigate("/ratings/my-received")}
+        >
+          My Ratings
+        </Button>
       </div>
 
       <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">

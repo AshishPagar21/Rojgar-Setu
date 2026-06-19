@@ -1,6 +1,3 @@
-export interface CreateRatingPayload {
+export interface EligibleWorkerParams {
   jobId: number;
-  toUserId: number;
-  ratingValue: number;
-  reviewText?: string;
 }

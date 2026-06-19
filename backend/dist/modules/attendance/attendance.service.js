@@ -134,7 +134,9 @@ exports.attendanceService = {
             update: {
                 status,
                 notes,
-                checkInTime: status === "PRESENT" || status === "COMPLETED" ? new Date() : undefined,
+                checkInTime: status === "PRESENT" || status === "COMPLETED"
+                    ? new Date()
+                    : undefined,
                 checkOutTime: status === "COMPLETED" ? new Date() : undefined,
             },
         });
