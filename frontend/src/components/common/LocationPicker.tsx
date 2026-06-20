@@ -76,7 +76,7 @@ export const LocationPicker = ({
     jobLatRef.current = lat;
     jobLngRef.current = lng;
 
-    console.log("🟢 updateLocationData", lat, lng);
+    
 
     lastMapUpdateAtRef.current = Date.now();
 

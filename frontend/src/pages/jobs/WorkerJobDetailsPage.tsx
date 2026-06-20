@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-
-
-import  toast  from "react-hot-toast";
+import toast from "react-hot-toast";
 
 import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
@@ -12,15 +10,13 @@ import { disputeService } from "../../modules/dispute/dispute.service";
 import { jobService } from "../../modules/job/job.service";
 import { jobApplicationService } from "../../modules/jobApplication/jobApplication.service";
 import { attendanceService } from "../../modules/attendance/attendance.service";
+import { paymentService } from "../../modules/payment/payment.service"; // 👈 IMPORT YOUR NEW SERVICE
 import { socketService } from "../../services/socket.service";
 import { getErrorMessage } from "../../utils/helpers";
 import { getCurrentLocation } from "../../utils/geolocation";
 
 const extractLocation = (description?: string | null) => {
-  if (!description) {
-    return undefined;
-  }
-
+  if (!description) return undefined;
   const match = description.match(/Location:\s*([^\n]+)/i);
   return match?.[1]?.trim();
 };
@@ -39,6 +35,7 @@ export const WorkerJobDetailsPage = () => {
   const [job, setJob] = useState<any>(null);
   const [application, setApplication] = useState<any>(null);
   const [attendance, setAttendance] = useState<any>(null);
+  const [payment, setPayment] = useState<any>(null); // 👈 Added payment state tracking
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [action, setAction] = useState<string>();
@@ -51,14 +48,13 @@ export const WorkerJobDetailsPage = () => {
         const jobData = await jobService.getJobById(Number(jobId));
         setJob(jobData);
 
-        // Try to get user's application
         try {
           const apps = await jobApplicationService.getMyApplications();
           const userApp = apps.find((a: any) => a.jobId === Number(jobId));
           setApplication(userApp);
 
-          // If selected, try to get the worker's own attendance record for this job
           if (userApp?.status === "SELECTED") {
+            // Fetch Attendance Status
             try {
               const attendanceHistory =
                 await attendanceService.getMyAttendance();
@@ -68,6 +64,20 @@ export const WorkerJobDetailsPage = () => {
               setAttendance(jobAttendance ?? null);
             } catch {
               // No attendance yet
+            }
+
+            // 👇 FETCH PAYMENT CLEANLY USING SERVICE LAYER
+            // Inside WorkerJobDetailsPage.tsx:
+            try {
+              const paymentData = await paymentService.getJobPayments(
+                Number(jobId),
+              );
+              // paymentData is now the raw array directly!
+              if (paymentData && paymentData.length > 0) {
+                setPayment(paymentData[0]);
+              }
+            } catch (err) {
+              console.error("Payment info not available yet", err);
             }
           }
         } catch {
@@ -89,13 +99,8 @@ export const WorkerJobDetailsPage = () => {
       jobId: number;
       workerId: number;
     }) => {
-      if (payload.jobId !== Number(jobId)) {
-        return;
-      }
-
-      if (profile?.worker?.id && payload.workerId !== profile.worker.id) {
-        return;
-      }
+      if (payload.jobId !== Number(jobId)) return;
+      if (profile?.worker?.id && payload.workerId !== profile.worker.id) return;
 
       try {
         const attendanceHistory = await attendanceService.getMyAttendance();
@@ -138,96 +143,91 @@ export const WorkerJobDetailsPage = () => {
   };
 
   const refreshAttendance = async () => {
-  if (!jobId) return;
-
-  const attendanceHistory = await attendanceService.getMyAttendance();
-
-  const jobAttendance = attendanceHistory.find(
-    (record: any) => record.jobId === Number(jobId),
-  );
-
-  setAttendance(jobAttendance ?? null);
-};
+    if (!jobId) return;
+    const attendanceHistory = await attendanceService.getMyAttendance();
+    const jobAttendance = attendanceHistory.find(
+      (record: any) => record.jobId === Number(jobId),
+    );
+    setAttendance(jobAttendance ?? null);
+  };
 
   const handleCheckIn = async () => {
-  if (!jobId) return;
-
-  try {
-    setLoading(true);
-
-    const location = await getCurrentLocation();
-
-    await attendanceService.checkIn(Number(jobId), {
-      latitude: location.latitude,
-      longitude: location.longitude,
-    });
-
-    toast.success("Check-in successful");
-
-    await refreshAttendance();
-  } catch (error: any) {
-    const message =
-      error?.response?.data?.message ||
-      "Failed to mark attendance";
-
-    if (message.includes("200 meters")) {
-      toast.error(
-        "You are not at the work location. Move within 200 meters and try again.",
-      );
-    } else {
-      toast.error(message);
+    if (!jobId) return;
+    try {
+      setAction("checking-in");
+      const location = await getCurrentLocation();
+      await attendanceService.checkIn(Number(jobId), {
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+      toast.success("Check-in successful");
+      await refreshAttendance();
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || "Failed to mark attendance";
+      if (message.includes("200 meters")) {
+        toast.error(
+          "You are not at the work location. Move within 200 meters and try again.",
+        );
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setAction(undefined);
     }
-
-    console.error(error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleCheckOut = async () => {
-  if (!jobId) return;
-
-  try {
-    setLoading(true);
-
-    const location = await getCurrentLocation();
-
-    await attendanceService.checkOut(Number(jobId), {
-      latitude: location.latitude,
-      longitude: location.longitude,
-    });
-
-    toast.success(
-      "Check-out successful. Waiting for employer review.",
-    );
-
-    await refreshAttendance();
-  } catch (error: any) {
-    const message =
-      error?.response?.data?.message ||
-      "Failed to check out";
-
-    if (message.includes("200 meters")) {
-      toast.error(
-        "You must be at the work location to check out.",
-      );
-    } else {
-      toast.error(message);
+    if (!jobId) return;
+    try {
+      setAction("checking-out");
+      const location = await getCurrentLocation();
+      await attendanceService.checkOut(Number(jobId), {
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+      toast.success("Check-out successful. Waiting for employer review.");
+      await refreshAttendance();
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "Failed to check out";
+      if (message.includes("200 meters")) {
+        toast.error("You must be at the work location to check out.");
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setAction(undefined);
     }
+  };
 
-    console.error(error);
-  } finally {
-    setLoading(false);
-  }
-};
+  // 👇 CLEAN SERVICE CALL FOR PAYMENT WRITING
+  const handleConfirmPaymentReceived = async () => {
+    if (!payment?.id) return;
+    try {
+      setAction("confirming-payment");
+
+      // The service unwraps response.data.data directly now
+      const updatedPayment = await paymentService.confirmPaymentReceived(
+        payment.id,
+      );
+
+      toast.success("Payment receipt confirmed successfully!");
+
+      // 👇 Use the absolute truth directly from the database response
+      setPayment(updatedPayment);
+    } catch (err) {
+      toast.error(getErrorMessage(err) || "Failed to confirm payment");
+      console.error(err);
+    } finally {
+      setAction(undefined);
+    }
+  };
 
   const handleRaiseDispute = async () => {
     if (!jobId || !attendance) return;
 
     const reason = window.prompt("Enter dispute reason");
-    if (!reason?.trim()) {
-      return;
-    }
+    if (!reason?.trim()) return;
 
     const description = window.prompt("Enter dispute description") ?? "";
     if (!description.trim()) {
@@ -243,6 +243,7 @@ export const WorkerJobDetailsPage = () => {
         reason: reason.trim(),
         description: description.trim(),
       });
+      toast.success("Dispute raised successfully");
     } catch (err) {
       setError("Failed to create dispute");
       console.error(err);
@@ -281,7 +282,7 @@ export const WorkerJobDetailsPage = () => {
         </div>
       )}
 
-      {/* Job Details */}
+      {/* Job Details Card */}
       <div className="rounded-panel bg-white p-5 shadow-panel">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -334,72 +335,40 @@ export const WorkerJobDetailsPage = () => {
       {/* Application Status */}
       {application && (
         <div className="rounded-panel bg-blue-50 p-4 shadow-panel">
-          <p className="text-sm font-medium text-blue-900">
+          <p className="text-sm font-medium text-blue-900 mb-1">
             Application Status
           </p>
           <StatusBadge status={application.status} />
         </div>
       )}
 
-      {getSelectedWorkers(job).length > 0 && (
-        <div className="rounded-panel bg-white p-5 shadow-panel">
-          <p className="text-sm font-medium text-slate-900 mb-3">
-            Selected Workers
-          </p>
-          <div className="space-y-3">
-            {getSelectedWorkers(job).map((selectedApplication: any) => (
-              <div
-                key={selectedApplication.id}
-                className="rounded-lg border border-slate-200 bg-slate-50 p-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      {selectedApplication.worker?.name ?? "Worker"}
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      Rating: {selectedApplication.worker?.rating ?? 0}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Jobs completed:{" "}
-                      {selectedApplication.worker?.totalJobsCompleted ?? 0}
-                    </p>
-                  </div>
-                  <StatusBadge status={selectedApplication.status} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Attendance Status */}
+      {/* Attendance Metrics Block */}
       {application?.status === "SELECTED" && attendance && (
         <div className="rounded-panel bg-purple-50 p-4 shadow-panel">
           <div className="mb-2 flex items-center justify-between gap-3">
             <p className="text-sm font-medium text-purple-900">Attendance</p>
             <StatusBadge status={attendanceStatus} />
           </div>
-          {hasCheckedIn ? (
+          {hasCheckedIn && (
             <p className="text-sm text-purple-700">
               Check-in: {new Date(attendance.checkInTime).toLocaleTimeString()}
             </p>
-          ) : null}
-          {hasCheckedOut ? (
+          )}
+          {hasCheckedOut && (
             <p className="text-sm text-purple-700">
               Check-out:{" "}
               {new Date(attendance.checkOutTime).toLocaleTimeString()}
             </p>
-          ) : null}
-          {attendance?.totalHours ? (
+          )}
+          {attendance?.totalHours && (
             <p className="text-sm text-purple-700">
               Hours worked: {attendance.totalHours}
             </p>
-          ) : null}
+          )}
         </div>
       )}
 
-      {/* Action Buttons */}
+      {/* Action Buttons Interface */}
       <div className="space-y-3">
         {!application && (
           <Button
@@ -451,14 +420,41 @@ export const WorkerJobDetailsPage = () => {
 
         {attendance?.status === "PENDING_REVIEW" && (
           <Button fullWidth variant="secondary" disabled>
-            Waiting For Review
+            Waiting For Employer Review
           </Button>
         )}
 
+        {/* 👇 CLEAN PAYMENTS VIEW UI PANEL */}
         {attendance?.status === "APPROVED" && (
-          <Button fullWidth variant="secondary" disabled>
-            Approved
-          </Button>
+          <div className="space-y-3 rounded-panel bg-green-50 p-4 border border-green-200 shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-green-900">
+                Work Approved 🎉
+              </p>
+              {/* Fallback to dynamic status tracking from backend payment row */}
+              <StatusBadge status={payment?.status ?? "PENDING"} />
+            </div>
+            <p className="text-xs text-green-700">
+              Your attendance was approved. Pay out wage structure:{" "}
+              <strong>₹{job.wage}</strong>
+            </p>
+
+            {/* 👇 Check both possible flags depending on your database schema sync */}
+            {payment?.status === "COMPLETED" || payment?.workerConfirmed ? (
+              <div className="text-center py-2 text-sm font-semibold text-green-800 bg-green-100 rounded-lg">
+                ✓ Payment Received Confirmed
+              </div>
+            ) : (
+              <Button
+                fullWidth
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleConfirmPaymentReceived}
+                loading={action === "confirming-payment"}
+              >
+                Mark Payment as Received
+              </Button>
+            )}
+          </div>
         )}
 
         {attendance?.status === "ISSUE_REPORTED" && (

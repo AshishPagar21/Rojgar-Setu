@@ -137,6 +137,7 @@ model Attendance {
   @@map("attendance")
 }
 
+
 model Payment {
   id                Int           @id @default(autoincrement())
   jobId             Int           @map("job_id")
@@ -150,6 +151,12 @@ model Payment {
   updatedAt         DateTime      @updatedAt @map("updated_at")
   employerConfirmed Boolean       @default(false) @map("employer_confirmed")
   workerConfirmed   Boolean       @default(false) @map("worker_confirmed")
+  
+  // Track the offline selection method chosen by employer
+  paymentMethod     PaymentMethod? @map("payment_method")
+  markedPaidAt      DateTime?     @map("marked_paid_at")
+  confirmedAt       DateTime?     @map("confirmed_at")
+
   employer          Employer      @relation(fields: [employerId], references: [id])
   job               Job           @relation(fields: [jobId], references: [id])
   worker            Worker        @relation(fields: [workerId], references: [id])
@@ -251,6 +258,11 @@ enum PaymentStatus {
   PENDING
   COMPLETED
   DISPUTED
+}
+
+enum PaymentMethod {
+  CASH
+  ONLINE_UPI
 }
 
 enum DisputeStatus {

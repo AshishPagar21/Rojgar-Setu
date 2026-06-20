@@ -5,52 +5,49 @@ import { authorizeRoles } from "../../middlewares/role.middleware";
 import { validate } from "../../middlewares/validate.middleware";
 import { paymentController } from "./payment.controller";
 import {
-  createJobPaymentsSchema,
   getJobPaymentsSchema,
   markPaymentSuccessSchema,
 } from "./payment.validation";
 
 const router = Router();
 
-// Employer routes
-router.post(
-  "/job/:jobId/create",
+// --- EMPLOYER ROUTES ---
+
+// GET /payments/job/:jobId
+router.get(
+  "/job/:jobId",
   authenticate,
-  authorizeRoles("EMPLOYER"),
-  validate(createJobPaymentsSchema),
-  paymentController.createPaymentsForJob,
+  authorizeRoles("EMPLOYER", "WORKER"),
+  validate(getJobPaymentsSchema),
+  paymentController.getJobPayments,
 );
 
+// PATCH /payments/:paymentId/mark-paid
 router.patch(
-  "/:paymentId/mark-success",
+  "/:paymentId/mark-paid",
   authenticate,
   authorizeRoles("EMPLOYER"),
   validate(markPaymentSuccessSchema),
   paymentController.markPaymentSuccess,
 );
 
-router.patch(
-  "/:paymentId/confirm",
-  authenticate,
-  authorizeRoles("WORKER"),
-  validate(markPaymentSuccessSchema),
-  paymentController.confirmPaymentReceived,
-);
 
-router.get(
-  "/my-job/:jobId",
-  authenticate,
-  authorizeRoles("EMPLOYER"),
-  validate(getJobPaymentsSchema),
-  paymentController.getJobPayments,
-);
+// --- WORKER ROUTES ---
 
-// Worker routes
+// GET /payments/my
 router.get(
   "/my",
   authenticate,
   authorizeRoles("WORKER"),
   paymentController.getMyPayments,
+);
+
+// PATCH /payments/:paymentId/confirm
+router.patch(
+  "/:paymentId/confirm",
+  authenticate,
+  authorizeRoles("WORKER"),
+  paymentController.confirmPaymentReceived,
 );
 
 export const paymentRoutes = router;

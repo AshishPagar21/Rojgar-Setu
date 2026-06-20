@@ -1,227 +1,99 @@
 import { prisma } from "../../config/prisma";
 import { HTTP_STATUS } from "../../utils/constants";
 import { ApiError } from "../../utils/response";
+import { PaymentMethod } from "@prisma/client";
 
 export const paymentService = {
-  async getPaymentModuleStatus() {
-    return {
-      module: "payment",
-      status: "ok",
-      timestamp: new Date().toISOString(),
-    };
-  },
-
-  /**
-   * Create payment records for selected workers of a completed job
-   */
-  async createPaymentsForJob(jobId: number, employerId: number) {
-    return await prisma.$transaction(async (tx) => {
-      // Verify job belongs to employer and is completed
-      const job = await tx.job.findUnique({
-        where: { id: jobId },
-      });
-
-      if (!job) {
-        throw new ApiError(HTTP_STATUS.NOT_FOUND, "Job not found");
-      }
-
-      if (job.employerId !== employerId) {
-        throw new ApiError(
-          HTTP_STATUS.FORBIDDEN,
-          "You can only create payments for your own jobs",
-        );
-      }
-
-      if (job.status !== "COMPLETED") {
-        throw new ApiError(
-          HTTP_STATUS.BAD_REQUEST,
-          "Job must be COMPLETED to create payments",
-        );
-      }
-
-      // Get all selected workers for this job
-      const selectedApplications = await tx.jobApplication.findMany({
-        where: { jobId, status: "SELECTED" },
-        select: { workerId: true },
-      });
-
-      if (selectedApplications.length === 0) {
-        throw new ApiError(
-          HTTP_STATUS.BAD_REQUEST,
-          "No selected workers found for this job",
-        );
-      }
-
-      // Create payment records for each worker if not already exists
-      const payments = await Promise.all(
-        selectedApplications.map(async (app) => {
-          const existingPayment = await tx.payment.findFirst({
-            where: { jobId, workerId: app.workerId },
-            orderBy: { createdAt: "desc" },
-          });
-
-          if (existingPayment) {
-            return tx.payment.update({
-              where: { id: existingPayment.id },
-              data: { amount: job.wage },
-            });
-          }
-
-          return tx.payment.create({
-            data: {
-              jobId,
-              employerId,
-              workerId: app.workerId,
-              amount: job.wage,
-              status: "PENDING",
-            },
-          });
-        }),
-      );
-
-      return payments;
-    });
-  },
-
-  /**
-   * Mark payment as successful
-   */
-  async markPaymentSuccess(paymentId: number, employerId: number) {
-    const payment = await prisma.payment.findUnique({
-      where: { id: paymentId },
-    });
-
-    if (!payment) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Payment not found");
-    }
-
-    if (payment.employerId !== employerId) {
-      throw new ApiError(
-        HTTP_STATUS.FORBIDDEN,
-        "You can only update your own payments",
-      );
-    }
-
-    const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-
-    const updatedPayment = await prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        employerConfirmed: true,
-        status: payment.workerConfirmed ? "COMPLETED" : "PENDING",
-        transactionId,
-        paidAt: new Date(),
-      },
-    });
-
-    if (updatedPayment.status === "COMPLETED") {
-      await prisma.notification.create({
-        data: {
-          userId: payment.workerId,
-          title: "Payment Completed",
-          message: "Your payment has been confirmed by both sides.",
-          type: "PAYMENT_COMPLETED",
-        },
-      });
-    }
-
-    return updatedPayment;
-  },
-
-  async confirmPaymentReceived(paymentId: number, workerId: number) {
-    const payment = await prisma.payment.findUnique({
-      where: { id: paymentId },
-    });
-
-    if (!payment) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Payment not found");
-    }
-
-    if (payment.workerId !== workerId) {
-      throw new ApiError(
-        HTTP_STATUS.FORBIDDEN,
-        "You can only confirm your own payments",
-      );
-    }
-
-    const updatedPayment = await prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        workerConfirmed: true,
-        status: payment.employerConfirmed ? "COMPLETED" : "PENDING",
-      },
-    });
-
-    if (updatedPayment.status === "COMPLETED") {
-      await prisma.notification.create({
-        data: {
-          userId: payment.employerId,
-          title: "Payment Confirmed",
-          message: "The worker confirmed payment receipt.",
-          type: "PAYMENT_COMPLETED",
-        },
-      });
-    }
-
-    return updatedPayment;
-  },
-
-  /**
-   * Get payments for a specific job (employer view)
-   */
+  // GET /payments/job/:jobId
   async getJobPayments(jobId: number, employerId: number) {
-    // Verify job belongs to employer
-    const job = await prisma.job.findUnique({
-      where: { id: jobId },
-    });
-
-    if (!job) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Job not found");
-    }
-
-    if (job.employerId !== employerId) {
-      throw new ApiError(
-        HTTP_STATUS.FORBIDDEN,
-        "You can only view payments for your own jobs",
-      );
+    const job = await prisma.job.findUnique({ where: { id: jobId } });
+    if (!job || job.employerId !== employerId) {
+      throw new ApiError(HTTP_STATUS.FORBIDDEN, "Unauthorized access to job details");
     }
 
     return prisma.payment.findMany({
       where: { jobId },
       include: {
-        worker: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        worker: true,
+        job: true,
       },
       orderBy: { createdAt: "desc" },
     });
   },
 
-  /**
-   * Get worker's payment history
-   */
+  // GET /payments/my
   async getWorkerPayments(workerId: number) {
     return prisma.payment.findMany({
       where: { workerId },
       include: {
-        job: {
-          select: {
-            id: true,
-            title: true,
-            jobDate: true,
-          },
-        },
-        employer: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        job: true,
+        employer: true,
       },
       orderBy: { createdAt: "desc" },
     });
   },
+
+  // PATCH /payments/:paymentId/mark-paid
+  async markAsPaid(paymentId: number, employerId: number, method: PaymentMethod) {
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { worker: true },
+    });
+
+    if (!payment || payment.employerId !== employerId) {
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Payment record not found");
+    }
+
+    const updatedPayment = await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        paymentMethod: method,
+        markedPaidAt: new Date(),
+        employerConfirmed: true,
+      },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: payment.worker.userId,
+        title: "Payment Sent",
+        message: "Employer marked payment as paid.",
+        type: "EMPLOYER_MARKED_PAID",
+      },
+    });
+
+    return updatedPayment;
+  },
+
+  // PATCH /payments/:paymentId/confirm
+  async confirmReceived(paymentId: number, workerId: number) {
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { employer: true },
+    });
+
+    if (!payment || payment.workerId !== workerId) {
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Payment transaction missing");
+    }
+
+    const updatedPayment = await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: "COMPLETED",
+        confirmedAt: new Date(),
+        workerConfirmed: true,
+      },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: payment.employer.userId,
+        title: "Payment Completed",
+        message: "Worker confirmed payment receipt.",
+        type: "WORKER_CONFIRMED_PAID",
+      },
+    });
+
+    return updatedPayment;
+  }
 };
