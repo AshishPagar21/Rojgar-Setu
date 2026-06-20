@@ -230,13 +230,6 @@ export const WorkerDashboardPage = () => {
         >
           {t("dashboard.myApplications")}
         </Button>
-        <Button
-          fullWidth
-          variant="outline"
-          onClick={() => navigate("/ratings/my-received")}
-        >
-          My Ratings
-        </Button>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

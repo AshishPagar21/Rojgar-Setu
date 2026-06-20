@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react";
 
 import { PageHeader } from "../../components/common/PageHeader";
-import { useAuth } from "../../hooks/useAuth";
-import {
-  ratingService,
-  type ReceivedRating,
-  type EmployerReceivedRating,
-} from "../../modules/rating/rating.service";
+import { ratingService } from "../../modules/rating/rating.service";
 
 export const ReceivedRatingsPage = () => {
-  const { user } = useAuth();
-  const isEmployer = user?.role === "EMPLOYER";
-  const [ratings, setRatings] = useState<
-    ReceivedRating[] | EmployerReceivedRating[]
-  >([]);
+  const [ratings, setRatings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
@@ -49,34 +40,13 @@ export const ReceivedRatingsPage = () => {
         ).toFixed(1)
       : 0;
 
-  const groupedRatings = ratings.reduce<
-    Record<number, (ReceivedRating | EmployerReceivedRating)[]>
-  >(
-    (groups, rating) => {
-      if (!groups[rating.jobId]) {
-        groups[rating.jobId] = [];
-      }
-
-      groups[rating.jobId].push(rating);
-      return groups;
-    },
-    {},
-  );
-
   const renderStars = (rating: number) => {
     return "⭐".repeat(rating) + "☆".repeat(5 - rating);
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={isEmployer ? "My Ratings" : "My Ratings"}
-        subtitle={
-          isEmployer
-            ? "See job-wise feedback from workers"
-            : "See job-wise feedback from employers"
-        }
-      />
+      <PageHeader title="Received Ratings" subtitle="How others rate you" />
 
       {error && (
         <div className="rounded bg-red-50 p-3 text-sm text-red-600">
@@ -86,28 +56,14 @@ export const ReceivedRatingsPage = () => {
 
       {/* Average Rating */}
       {ratings.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-panel bg-yellow-50 p-4 shadow-panel text-center">
-            <p className="text-2xl font-bold text-yellow-600">{averageRating}</p>
-            <p className="text-sm text-yellow-900 mt-1">
-              {renderStars(Math.round(Number(averageRating)))}
-            </p>
-            <p className="text-xs text-yellow-700 mt-2">
-              Overall average
-            </p>
-          </div>
-
-          <div className="rounded-panel bg-white p-4 shadow-panel text-center">
-            <p className="text-2xl font-bold text-slate-900">{ratings.length}</p>
-            <p className="text-xs text-slate-600 mt-2">Total ratings</p>
-          </div>
-
-          <div className="rounded-panel bg-white p-4 shadow-panel text-center">
-            <p className="text-2xl font-bold text-slate-900">
-              {Object.keys(groupedRatings).length}
-            </p>
-            <p className="text-xs text-slate-600 mt-2">Jobs reviewed</p>
-          </div>
+        <div className="rounded-panel bg-yellow-50 p-4 shadow-panel text-center">
+          <p className="text-2xl font-bold text-yellow-600">{averageRating}</p>
+          <p className="text-sm text-yellow-900 mt-1">
+            {renderStars(Math.round(Number(averageRating)))}
+          </p>
+          <p className="text-xs text-yellow-700 mt-2">
+            Based on {ratings.length} rating(s)
+          </p>
         </div>
       )}
 
@@ -117,62 +73,33 @@ export const ReceivedRatingsPage = () => {
           <p className="text-slate-600">No ratings yet</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {Object.values(groupedRatings).map((jobRatings) => {
-            const rating = jobRatings[0];
-
-            return (
-              <div
-                key={rating.jobId}
-                className="rounded-panel bg-white p-4 shadow-panel space-y-4"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-brand-600">
-                      {rating.job.category}
-                    </p>
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      {rating.job.title}
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {rating.job.city}
-                      {rating.job.landmark ? ` • ${rating.job.landmark}` : ""}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {new Date(rating.job.jobDate).toLocaleDateString()} • Wage ₹
-                      {rating.job.wage}
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-slate-900">
-                      {isEmployer
-                        ? (rating as EmployerReceivedRating).fromUser.worker
-                            ?.name ?? "Worker"
-                        : (rating as ReceivedRating).fromUser.employer
-                            ?.name ?? "Employer"}
-                    </p>
-                    <p className="text-xl">{renderStars(rating.ratingValue)}</p>
-                  </div>
+        <div className="space-y-3">
+          {ratings.map((rating) => (
+            <div
+              key={rating.id}
+              className="rounded-panel bg-white p-4 shadow-panel"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="font-medium text-slate-900">
+                    {rating.fromUser.role === "EMPLOYER"
+                      ? "Employer"
+                      : "Worker"}
+                  </p>
+                  <p className="text-xs text-slate-600">{rating.job?.title}</p>
                 </div>
-
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">
-                    {isEmployer ? "Worker Review" : "Employer Review"}
-                  </p>
-                  <p className="mt-2 text-sm text-slate-700">
-                    {rating.reviewText?.trim() || "No review was added."}
-                  </p>
-                </div>
-
-                {jobRatings.length > 1 && (
-                  <p className="text-xs text-slate-500">
-                    {jobRatings.length} ratings recorded for this job.
-                  </p>
-                )}
+                <p className="text-xl">{renderStars(rating.ratingValue)}</p>
               </div>
-            );
-          })}
+              {rating.reviewText && (
+                <p className="mt-3 text-sm text-slate-700">
+                  "{rating.reviewText}"
+                </p>
+              )}
+              <p className="mt-2 text-xs text-slate-500">
+                {new Date(rating.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -56,7 +56,6 @@ export const JobCard: React.FC<JobCardProps> = ({
             {title}
           </h3>
           <p className="text-sm text-slate-500">{employerName}</p>
-          <p>Happy Bi</p>
         </div>
         <span
           className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}

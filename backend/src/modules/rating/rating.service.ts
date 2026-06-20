@@ -1,337 +1,259 @@
 import { prisma } from "../../config/prisma";
 import { HTTP_STATUS } from "../../utils/constants";
 import { ApiError } from "../../utils/response";
+import type { CreateRatingPayload } from "./rating.types";
 
 export const ratingService = {
-  async createRating(
-    jobId: number,
-    employerUserId: number,
-    employerId: number,
-    toUserId: number,
-    ratingValue: number,
-    reviewText?: string,
-  ) {
-    return prisma.$transaction(async (tx) => {
-      const job = await tx.job.findUnique({
-        where: { id: jobId },
-      });
+  /**
+   * Create a rating
+   */
+  async createRating(fromUserId: number, payload: CreateRatingPayload) {
+    const { jobId, toUserId, ratingValue, reviewText } = payload;
 
-      if (!job) {
-        throw new ApiError(HTTP_STATUS.NOT_FOUND, "Job not found");
-      }
+    // Validate rating value
+    if (ratingValue < 1 || ratingValue > 5) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        "Rating value must be between 1 and 5",
+      );
+    }
 
-      if (job.employerId !== employerId) {
-        throw new ApiError(
-          HTTP_STATUS.FORBIDDEN,
-          "You can only rate workers for your own jobs",
-        );
-      }
-
-      const worker = await tx.worker.findUnique({
-        where: { userId: toUserId },
-      });
-
-      if (!worker) {
-        throw new ApiError(HTTP_STATUS.NOT_FOUND, "Worker not found");
-      }
-
-      const completedApplication = await tx.jobApplication.findFirst({
-        where: {
-          jobId,
-          workerId: worker.id,
-          status: "COMPLETED",
-        },
-      });
-
-      if (!completedApplication) {
-        throw new ApiError(
-          HTTP_STATUS.BAD_REQUEST,
-          "Worker is not eligible for rating on this job",
-        );
-      }
-
-      const existingRating = await tx.rating.findFirst({
-        where: {
-          jobId,
-          fromUserId: employerUserId,
-          toUserId,
-        },
-      });
-
-      if (existingRating) {
-        throw new ApiError(
-          HTTP_STATUS.CONFLICT,
-          "You have already rated this worker for this job",
-        );
-      }
-
-      const rating = await tx.rating.create({
-        data: {
-          jobId,
-          fromUserId: employerUserId,
-          toUserId,
-          ratingValue,
-          reviewText,
-        },
-      });
-
-      const ratingStats = await tx.rating.aggregate({
-        where: { toUserId },
-        _avg: {
-          ratingValue: true,
-        },
-        _count: {
-          ratingValue: true,
-        },
-      });
-
-      await tx.worker.update({
-        where: { userId: toUserId },
-        data: {
-          rating: ratingStats._avg.ratingValue ?? 0,
-          totalRatings: ratingStats._count.ratingValue,
-        },
-      });
-
-      return rating;
-    });
-  },
-
-  async createWorkerRating(
-    jobId: number,
-    workerUserId: number,
-    workerId: number,
-    toUserId: number,
-    ratingValue: number,
-    reviewText?: string,
-  ) {
-    return prisma.$transaction(async (tx) => {
-      const job = await tx.job.findUnique({
-        where: { id: jobId },
-      });
-
-      if (!job) {
-        throw new ApiError(HTTP_STATUS.NOT_FOUND, "Job not found");
-      }
-
-      const employer = await tx.employer.findUnique({
-        where: { userId: toUserId },
-      });
-
-      if (!employer) {
-        throw new ApiError(HTTP_STATUS.NOT_FOUND, "Employer not found");
-      }
-
-      if (job.employerId !== employer.id) {
-        throw new ApiError(
-          HTTP_STATUS.FORBIDDEN,
-          "You can only rate the employer for this job",
-        );
-      }
-
-      const application = await tx.jobApplication.findUnique({
-        where: { jobId_workerId: { jobId, workerId } },
-      });
-
-      if (!application || !["SELECTED", "COMPLETED"].includes(application.status)) {
-        throw new ApiError(
-          HTTP_STATUS.FORBIDDEN,
-          "You can only rate the employer after check-in or completion",
-        );
-      }
-
-      const attendance = await tx.attendance.findFirst({
-        where: {
-          jobId,
-          workerId,
-          checkInTime: { not: null },
-        },
-      });
-
-      const isEligible = Boolean(attendance?.checkInTime) || application.status === "COMPLETED";
-
-      if (!isEligible) {
-        throw new ApiError(
-          HTTP_STATUS.FORBIDDEN,
-          "You can rate the employer after check-in or once the job is completed",
-        );
-      }
-
-      const existingRating = await tx.rating.findFirst({
-        where: {
-          jobId,
-          fromUserId: workerUserId,
-          toUserId,
-        },
-      });
-
-      if (existingRating) {
-        throw new ApiError(
-          HTTP_STATUS.CONFLICT,
-          "You have already rated this employer for this job",
-        );
-      }
-
-      const rating = await tx.rating.create({
-        data: {
-          jobId,
-          fromUserId: workerUserId,
-          toUserId,
-          ratingValue,
-          reviewText,
-        },
-      });
-
-      const ratingStats = await tx.rating.aggregate({
-        where: { toUserId },
-        _avg: {
-          ratingValue: true,
-        },
-        _count: {
-          ratingValue: true,
-        },
-      });
-
-      await tx.employer.update({
-        where: { userId: toUserId },
-        data: {
-          rating: ratingStats._avg.ratingValue ?? 0,
-          totalRatings: ratingStats._count.ratingValue,
-        },
-      });
-
-      return rating;
-    });
-  },
-
-  async getEligibleWorkers(
-    jobId: number,
-    employerId: number,
-    employerUserId: number,
-  ) {
+    // Verify job exists and that the payment flow has completed for the participant pair
     const job = await prisma.job.findUnique({
-      where: {
-        id: jobId,
+      where: { id: jobId },
+      include: {
+        jobApplications: true,
+        payments: true,
       },
     });
 
     if (!job) {
-      throw new ApiError(
-        HTTP_STATUS.NOT_FOUND,
-        "Job not found",
-      );
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Job not found");
     }
 
-    if (job.employerId !== employerId) {
-      throw new ApiError(
-        HTTP_STATUS.FORBIDDEN,
-        "You can only access your own jobs",
-      );
+    // Verify rater and ratee are valid users
+    const fromUserRecord = await prisma.user.findUnique({
+      where: { id: fromUserId },
+    });
+    const toUserRecord = await prisma.user.findUnique({
+      where: { id: toUserId },
+    });
+
+    if (!fromUserRecord || !toUserRecord) {
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, "User not found");
     }
 
-    const completedWorkers =
-      await prisma.jobApplication.findMany({
-        where: {
-          jobId,
-          status: "COMPLETED",
-        },
-        include: {
-          worker: true,
-        },
-      });
+    const fromWorker = await prisma.worker.findUnique({
+      where: { userId: fromUserId },
+    });
+    const toWorker = await prisma.worker.findUnique({
+      where: { userId: toUserId },
+    });
+    const toEmployer = await prisma.employer.findUnique({
+      where: { userId: toUserId },
+    });
 
-    const alreadyRated = await prisma.rating.findMany({
+    if (fromUserRecord.role === "EMPLOYER" && toUserRecord.role === "WORKER") {
+      const workerApplication = job.jobApplications.find(
+        (app) => app.workerId === toWorker?.id && app.status !== "REJECTED",
+      );
+
+      const completedPayment = job.payments.find(
+        (payment) =>
+          payment.workerId === toWorker?.id && payment.status === "COMPLETED",
+      );
+
+      if (!workerApplication || !completedPayment) {
+        throw new ApiError(
+          HTTP_STATUS.FORBIDDEN,
+          "Worker must be selected and payment must be completed before rating",
+        );
+      }
+    } else if (
+      fromUserRecord.role === "WORKER" &&
+      toUserRecord.role === "EMPLOYER"
+    ) {
+      const workerApplication = job.jobApplications.find(
+        (app) => app.workerId === fromWorker?.id && app.status !== "REJECTED",
+      );
+
+      const completedPayment = job.payments.find(
+        (payment) =>
+          payment.workerId === fromWorker?.id &&
+          payment.employerId === toEmployer?.id &&
+          payment.status === "COMPLETED",
+      );
+
+      if (!workerApplication || !completedPayment) {
+        throw new ApiError(
+          HTTP_STATUS.FORBIDDEN,
+          "Payment must be completed before rating",
+        );
+      }
+    } else {
+      throw new ApiError(HTTP_STATUS.FORBIDDEN, "Invalid rating relationship");
+    }
+
+    if (
+      fromUserRecord.role === "WORKER" &&
+      toUserRecord.role === "EMPLOYER" &&
+      job.employerId !== toEmployer?.id
+    ) {
+      throw new ApiError(HTTP_STATUS.FORBIDDEN, "Invalid rating relationship");
+    }
+
+    // Check for duplicate rating
+    const existingRating = await prisma.rating.findFirst({
       where: {
         jobId,
-        fromUserId: employerUserId,
-      },
-      select: {
-        toUserId: true,
+        fromUserId,
+        toUserId,
       },
     });
 
-    const ratedUserIds = alreadyRated.map(
-      (rating) => rating.toUserId,
-    );
-
-    return completedWorkers.filter(
-      (worker) =>
-        !ratedUserIds.includes(worker.worker.userId),
-    );
-  },
-
-  async getReceivedRatings(workerUserId: number) {
-    const worker = await prisma.worker.findUnique({
-      where: { userId: workerUserId },
-    });
-
-    if (!worker) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Worker profile not found");
+    if (existingRating) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        "You have already rated this user for this job",
+      );
     }
 
-    return prisma.rating.findMany({
-      where: {
-        toUserId: workerUserId,
+    // Create rating
+    const rating = await prisma.rating.create({
+      data: {
+        jobId,
+        fromUserId,
+        toUserId,
+        ratingValue,
+        reviewText,
       },
+    });
+
+    // Update average rating and totalRatings for the rated user
+    const targetUser = await prisma.user.findUnique({
+      where: { id: toUserId },
+    });
+
+    if (targetUser?.role === "EMPLOYER") {
+      const employer = await prisma.employer.findUnique({
+        where: { userId: toUserId },
+      });
+
+      if (employer) {
+        const allRatings = await prisma.rating.findMany({
+          where: { toUserId },
+          select: { ratingValue: true },
+        });
+
+        const newCount = allRatings.length;
+        const sum = allRatings.reduce((acc, r) => acc + r.ratingValue, 0);
+        const newAverage = newCount > 0 ? sum / newCount : 0;
+
+        await prisma.employer.update({
+          where: { id: employer.id },
+          data: {
+            rating: newAverage,
+            totalRatings: newCount,
+          },
+        });
+      }
+    } else if (targetUser?.role === "WORKER") {
+      const worker = await prisma.worker.findUnique({
+        where: { userId: toUserId },
+      });
+
+      if (worker) {
+        const allRatings = await prisma.rating.findMany({
+          where: { toUserId },
+          select: { ratingValue: true },
+        });
+
+        const newCount = allRatings.length;
+        const sum = allRatings.reduce((acc, r) => acc + r.ratingValue, 0);
+        const newAverage = newCount > 0 ? sum / newCount : 0;
+
+        await prisma.worker.update({
+          where: { id: worker.id },
+          data: {
+            rating: newAverage,
+            totalRatings: newCount,
+          },
+        });
+      }
+    }
+
+    return rating;
+  },
+
+  /**
+   * Get ratings received by a user
+   */
+  async getReceivedRatings(userId: number) {
+    return prisma.rating.findMany({
+      where: { toUserId: userId },
       include: {
+        fromUser: {
+          select: {
+            id: true,
+            role: true,
+            employer: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            worker: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
         job: {
           select: {
             id: true,
             title: true,
-            category: true,
             jobDate: true,
-            city: true,
-            landmark: true,
-            wage: true,
-            status: true,
           },
         },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
+  /**
+   * Get all ratings for a job
+   */
+  async getJobRatings(jobId: number) {
+    return prisma.rating.findMany({
+      where: { jobId },
+      include: {
         fromUser: {
           select: {
+            id: true,
             role: true,
             employer: {
               select: {
                 name: true,
               },
             },
+            worker: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-  },
-
-  async getEmployerReceivedRatings(employerUserId: number) {
-    const employer = await prisma.employer.findUnique({
-      where: { userId: employerUserId },
-    });
-
-    if (!employer) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Employer profile not found");
-    }
-
-    return prisma.rating.findMany({
-      where: {
-        toUserId: employerUserId,
-      },
-      include: {
-        job: {
+        toUser: {
           select: {
             id: true,
-            title: true,
-            category: true,
-            jobDate: true,
-            city: true,
-            landmark: true,
-            wage: true,
-            status: true,
-          },
-        },
-        fromUser: {
-          select: {
             role: true,
+            employer: {
+              select: {
+                name: true,
+              },
+            },
             worker: {
               select: {
                 name: true,
@@ -340,53 +262,7 @@ export const ratingService = {
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-  },
-
-  async getJobRatings(jobId: number, workerUserId: number) {
-    const worker = await prisma.worker.findUnique({
-      where: { userId: workerUserId },
-    });
-
-    if (!worker) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Worker profile not found");
-    }
-
-    return prisma.rating.findMany({
-      where: {
-        jobId,
-        toUserId: workerUserId,
-      },
-      include: {
-        job: {
-          select: {
-            id: true,
-            title: true,
-            category: true,
-            jobDate: true,
-            city: true,
-            landmark: true,
-            wage: true,
-            status: true,
-          },
-        },
-        fromUser: {
-          select: {
-            role: true,
-            employer: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     });
   },
 };

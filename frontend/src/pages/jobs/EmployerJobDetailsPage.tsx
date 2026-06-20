@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
@@ -268,9 +268,7 @@ export const EmployerJobDetailsPage = () => {
 
         <hr className="my-4" />
 
-
-        {job.status !== "COMPLETED" ? (
-          <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-slate-600">Applied</p>
             <p className="text-2xl font-bold text-slate-900">
@@ -284,17 +282,6 @@ export const EmployerJobDetailsPage = () => {
             </p>
           </div>
         </div>
-        ):
-          <div>
-            <p className="text-sm font-medium text-slate-900">Workers</p>
-            <p className="mt-2 text-sm text-slate-700">
-               <Link to={`/ratings/${jobId}`}>Click here To see And Rate Workers</Link>
-            </p>
-            
-          </div>
-        }
-
-        
 
         {selectedApplicants.length > 0 && (
           <>

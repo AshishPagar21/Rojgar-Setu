@@ -196,7 +196,6 @@ export const BrowseJobsPage = () => {
                 employerName={
                   job.employerName || job.employer?.name || "Employer"
                 }
-                employerRating={job.employer?.rating ?? job.employerRating}
                 onViewDetails={(jobId) => navigate(`/jobs/open/${jobId}`)}
                 onApply={(jobId) => navigate(`/jobs/open/${jobId}`)}
               />

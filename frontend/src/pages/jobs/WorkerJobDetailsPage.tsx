@@ -5,7 +5,6 @@ import { useParams } from "react-router-dom";
 import  toast  from "react-hot-toast";
 
 import { Button } from "../../components/common/Button";
-import { RatingForm } from "../../components/common/RatingForm";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { useAuth } from "../../hooks/useAuth";
@@ -43,7 +42,6 @@ export const WorkerJobDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [action, setAction] = useState<string>();
-  const [showEmployerRatingForm, setShowEmployerRatingForm] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -272,9 +270,6 @@ export const WorkerJobDetailsPage = () => {
   const hasCheckedIn = attendance?.checkInTime;
   const hasCheckedOut = attendance?.checkOutTime;
   const attendanceStatus = attendance?.status;
-  const canRateEmployer = Boolean(
-    hasCheckedIn || hasCheckedOut || application?.status === "COMPLETED",
-  );
 
   return (
     <div className="space-y-6">
@@ -293,27 +288,10 @@ export const WorkerJobDetailsPage = () => {
             <p className="text-sm text-slate-600">Job Status</p>
             <StatusBadge status={job.status} />
           </div>
-          <div className="text-right space-y-2">
-            <div>
-              <p className="text-sm text-slate-600">Employer Rating</p>
-              <p className="text-base font-semibold text-slate-900">
-                {job.employer?.rating > 0
-                  ? `${Number(job.employer.rating).toFixed(1)} ⭐`
-                  : "No ratings"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-600">Wage</p>
-              <p className="text-2xl font-bold text-slate-900">₹{job.wage}</p>
-            </div>
+          <div className="text-right">
+            <p className="text-sm text-slate-600">Wage</p>
+            <p className="text-2xl font-bold text-slate-900">₹{job.wage}</p>
           </div>
-        </div>
-
-        <hr className="my-4" />
-
-        <div>
-          <p className="text-sm font-medium text-slate-900">Employer</p>
-          <p className="mt-1 text-sm text-slate-700">{job.employer?.name}</p>
         </div>
 
         <hr className="my-4" />
@@ -499,39 +477,6 @@ export const WorkerJobDetailsPage = () => {
           </>
         )}
       </div>
-
-      {canRateEmployer && job?.employer?.userId && (
-        <div className="rounded-panel bg-white p-5 shadow-panel space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Employer Review</p>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Rate {job.employer.name}
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Share feedback about behavior, payment, and job coordination.
-              </p>
-            </div>
-            {!showEmployerRatingForm && (
-              <Button
-                variant="secondary"
-                onClick={() => setShowEmployerRatingForm(true)}
-              >
-                Rate Employer
-              </Button>
-            )}
-          </div>
-
-          {showEmployerRatingForm && (
-            <RatingForm
-              jobId={Number(jobId)}
-              toUserId={job.employer.userId}
-              onSuccess={() => setShowEmployerRatingForm(false)}
-              onCancel={() => setShowEmployerRatingForm(false)}
-            />
-          )}
-        </div>
-      )}
     </div>
   );
 };
