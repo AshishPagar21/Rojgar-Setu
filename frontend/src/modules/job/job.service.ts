@@ -6,6 +6,9 @@ export interface CreateJobPayload {
   category: string;
   wage: number;
   jobDate: string;
+  expectedStartTime: string;
+  expectedEndTime: string;
+  expectedWorkingHours: number;
   requiredWorkers: number;
   locationLine1: string;
   city: string;

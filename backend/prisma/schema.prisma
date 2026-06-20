@@ -72,6 +72,11 @@ model Job {
   category               String
   wage                   Float
   jobDate                DateTime         @map("job_date")
+
+  expectedStartTime    String    @map("expected_start_time")
+  expectedEndTime      String    @map("expected_end_time")
+  expectedWorkingHours Float     @default(8) @map("expected_working_hours")
+
   requiredWorkers        Int              @map("required_workers")
   latitude               Float
   longitude              Float
@@ -81,7 +86,7 @@ model Job {
   city                   String?
   landmark               String?
   locationLine1          String?          @map("location_line1")
-  expected_working_hours Float            @default(8)
+ 
   attendance             Attendance[]
   disputes               Dispute[]
   jobApplications        JobApplication[]

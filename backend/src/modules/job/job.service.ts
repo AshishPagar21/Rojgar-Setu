@@ -19,6 +19,7 @@ export const jobService = {
    */
   async createJob(employerId: number, payload: CreateJobPayload) {
     // Validate coordinates
+    console.log("PAYLOAD RECEIVED:", payload);
     if (!payload.latitude || !payload.longitude) {
       throw new ApiError(
         HTTP_STATUS.BAD_REQUEST,
@@ -27,22 +28,27 @@ export const jobService = {
     }
 
     const job = await prisma.job.create({
-      data: {
-        employerId,
-        title: payload.title,
-        description: buildDescriptionWithLocation(payload),
-        category: payload.category,
-        wage: payload.wage,
-        jobDate: new Date(payload.jobDate),
-        requiredWorkers: payload.requiredWorkers,
-        locationLine1: payload.locationLine1,
-        city: payload.city,
-        landmark: payload.landmark,
-        latitude: payload.latitude,
-        longitude: payload.longitude,
-        status: "OPEN",
-      },
-    });
+  data: {
+    employerId,
+    title: payload.title,
+    description: buildDescriptionWithLocation(payload),
+    category: payload.category,
+    wage: payload.wage,
+    jobDate: new Date(payload.jobDate),
+
+    expectedStartTime: payload.expectedStartTime,
+    expectedEndTime: payload.expectedEndTime,
+    expectedWorkingHours: payload.expectedWorkingHours,
+
+    requiredWorkers: payload.requiredWorkers,
+    locationLine1: payload.locationLine1,
+    city: payload.city,
+    landmark: payload.landmark,
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+    status: "OPEN",
+  },
+});
 
     // Increment employer's totalJobsPosted
     await prisma.employer.update({

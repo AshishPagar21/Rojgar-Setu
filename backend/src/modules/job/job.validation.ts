@@ -3,25 +3,43 @@ import { z } from "zod";
 export const createJobSchema = z.object({
   body: z.object({
     title: z.string().min(3, "Title must be at least 3 characters"),
+
     description: z
       .string()
       .min(10, "Description must be at least 10 characters"),
+
     category: z.string().min(1, "Category is required"),
+
     wage: z.number().positive("Wage must be a positive number"),
+
     jobDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
       message: "Invalid date format",
     }),
+
+    expectedStartTime: z.string().min(1, "Start time is required"),
+
+    expectedEndTime: z.string().min(1, "End time is required"),
+
+    expectedWorkingHours: z
+      .number()
+      .positive("Working hours must be greater than 0"),
+
     requiredWorkers: z
       .number()
       .int()
       .positive("Required workers must be at least 1"),
+
     locationLine1: z.string().min(2, "Location detail is required"),
+
     city: z.string().min(2, "City is required"),
+
     landmark: z.string().min(2, "Landmark is required"),
+
     latitude: z
       .number()
       .min(-90, "Latitude must be between -90 and 90")
       .max(90, "Latitude must be between -90 and 90"),
+
     longitude: z
       .number()
       .min(-180, "Longitude must be between -180 and 180")

@@ -12,22 +12,35 @@ import { Select } from "../../components/common/Select";
 import { jobService } from "../../modules/job/job.service";
 import { getErrorMessage } from "../../utils/helpers";
 
-const schema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  category: z.string().min(1, "Category is required"),
-  wage: z.coerce.number().positive("Wage must be greater than 0"),
-  jobDate: z.string().min(1, "Job date is required"),
-  requiredWorkers: z.coerce
-    .number()
-    .int("Workers must be a whole number")
-    .positive("Required workers must be at least 1"),
-  locationLine1: z.string().min(2, "Location detail is required"),
-  city: z.string().min(2, "City is required"),
-  landmark: z.string().min(2, "Landmark is required"),
-  latitude: z.coerce.number().min(-90).max(90),
-  longitude: z.coerce.number().min(-180).max(180),
-});
+const schema = z
+  .object({
+    title: z.string().min(3, "Title must be at least 3 characters"),
+    description: z
+      .string()
+      .min(10, "Description must be at least 10 characters"),
+    category: z.string().min(1, "Category is required"),
+    wage: z.coerce.number().positive("Wage must be greater than 0"),
+    jobDate: z.string().min(1, "Job date is required"),
+
+    expectedStartTime: z.string().min(1, "Start time is required"),
+    expectedEndTime: z.string().min(1, "End time is required"),
+
+    requiredWorkers: z.coerce
+      .number()
+      .int("Workers must be a whole number")
+      .positive("Required workers must be at least 1"),
+
+    locationLine1: z.string().min(2, "Location detail is required"),
+    city: z.string().min(2, "City is required"),
+    landmark: z.string().min(2, "Landmark is required"),
+
+    latitude: z.coerce.number().min(-90).max(90),
+    longitude: z.coerce.number().min(-180).max(180),
+  })
+  .refine((data) => data.expectedEndTime > data.expectedStartTime, {
+    message: "End time must be after start time",
+    path: ["expectedEndTime"],
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -50,11 +63,15 @@ export const CreateJobPage = () => {
       category: "Construction",
       wage: undefined,
       jobDate: "",
+
+      expectedStartTime: "",
+      expectedEndTime: "",
+
       requiredWorkers: undefined,
       locationLine1: "",
       city: "",
       landmark: "",
-      latitude: 20.5937, // India center
+      latitude: 20.5937,
       longitude: 78.9629,
     },
   });
@@ -94,12 +111,36 @@ export const CreateJobPage = () => {
     setValue("landmark", value, { shouldValidate: true });
   };
 
+  const calculateHours = (startTime: string, endTime: string): number => {
+    const [startHour, startMinute] = startTime.split(":").map(Number);
+    const [endHour, endMinute] = endTime.split(":").map(Number);
+
+    const start = startHour + startMinute / 60;
+    const end = endHour + endMinute / 60;
+
+    return Number((end - start).toFixed(2));
+  };
+
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
     setError(undefined);
 
     try {
-      await jobService.createJob(values);
+      const expectedWorkingHours = calculateHours(
+        values.expectedStartTime,
+        values.expectedEndTime,
+      );
+
+      console.log("Submitting Job:", {
+        ...values,
+        expectedWorkingHours,
+      });
+
+      await jobService.createJob({
+        ...values,
+        expectedWorkingHours,
+      });
+
       navigate("/jobs/my");
     } catch (err) {
       setError(getErrorMessage(err));
@@ -170,6 +211,20 @@ export const CreateJobPage = () => {
           type="date"
           error={errors.jobDate?.message}
           {...register("jobDate")}
+        />
+
+        <Input
+          label="Expected Start Time"
+          type="time"
+          error={errors.expectedStartTime?.message}
+          {...register("expectedStartTime")}
+        />
+
+        <Input
+          label="Expected End Time"
+          type="time"
+          error={errors.expectedEndTime?.message}
+          {...register("expectedEndTime")}
         />
 
         <Input
