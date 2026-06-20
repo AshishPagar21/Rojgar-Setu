@@ -5,6 +5,10 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../hooks/useAuth";
 import { notificationService } from "../../modules/notification/notification.service";
 import { routePaths } from "../../routes/routePaths";
+import {
+  socketService,
+  type NotificationSocketPayload,
+} from "../../services/socket.service";
 import { LanguageSwitcher } from "../common/LanguageSwitcher";
 
 const roleLabel: Record<string, string> = {
@@ -95,6 +99,27 @@ export const AppNavbar = () => {
     };
 
     loadNotifications();
+  }, []);
+
+  useEffect(() => {
+    const handleNewNotification = (payload: NotificationSocketPayload) => {
+      setUnreadCount((prev) => prev + 1);
+      setNotifications((prev) =>
+        [
+          {
+            ...payload,
+            isRead: false,
+          },
+          ...prev.filter((item) => item.id !== payload.id),
+        ].slice(0, 5),
+      );
+    };
+
+    socketService.on("notification:new", handleNewNotification);
+
+    return () => {
+      socketService.off("notification:new", handleNewNotification);
+    };
   }, []);
 
   useEffect(() => {

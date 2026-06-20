@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { notificationService } from "../../modules/notification/notification.service";
+import {
+  socketService,
+  type NotificationSocketPayload,
+} from "../../services/socket.service";
 
 export const NotificationsPage = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -24,6 +28,24 @@ export const NotificationsPage = () => {
     };
 
     loadNotifications();
+  }, []);
+
+  useEffect(() => {
+    const handleNewNotification = (payload: NotificationSocketPayload) => {
+      setNotifications((prev) => [
+        {
+          ...payload,
+          isRead: false,
+        },
+        ...prev.filter((item) => item.id !== payload.id),
+      ]);
+    };
+
+    socketService.on("notification:new", handleNewNotification);
+
+    return () => {
+      socketService.off("notification:new", handleNewNotification);
+    };
   }, []);
 
   const handleMarkAllRead = async () => {

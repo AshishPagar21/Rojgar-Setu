@@ -5,8 +5,10 @@ import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { attendanceService } from "../../modules/attendance/attendance.service";
+import { disputeService } from "../../modules/dispute/dispute.service";
 import { jobService } from "../../modules/job/job.service";
 import { jobApplicationService } from "../../modules/jobApplication/jobApplication.service";
+import { socketService } from "../../services/socket.service";
 
 const extractLocation = (description: string) => {
   const match = description.match(/Location:\s*([^\n]+)/i);
@@ -67,6 +69,35 @@ export const EmployerJobDetailsPage = () => {
     fetchJob();
   }, [jobId]);
 
+  useEffect(() => {
+    const refreshForAttendanceEvents = async (payload: { jobId: number }) => {
+      if (payload.jobId !== Number(jobId)) {
+        return;
+      }
+
+      try {
+        await refreshData(Number(jobId));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    socketService.on("attendance:checked-in", refreshForAttendanceEvents);
+    socketService.on("attendance:checked-out", refreshForAttendanceEvents);
+    socketService.on("attendance:approved", refreshForAttendanceEvents);
+    socketService.on("attendance:issue-reported", refreshForAttendanceEvents);
+
+    return () => {
+      socketService.off("attendance:checked-in", refreshForAttendanceEvents);
+      socketService.off("attendance:checked-out", refreshForAttendanceEvents);
+      socketService.off("attendance:approved", refreshForAttendanceEvents);
+      socketService.off(
+        "attendance:issue-reported",
+        refreshForAttendanceEvents,
+      );
+    };
+  }, [jobId]);
+
   const handleCancel = async () => {
     if (!jobId) return;
     try {
@@ -95,20 +126,64 @@ export const EmployerJobDetailsPage = () => {
     }
   };
 
-  const handleMarkAttendance = async (
-    workerId: number,
-    status: "PRESENT" | "COMPLETED",
-  ) => {
+  const handleApproveAttendance = async (attendanceId: number) => {
+    if (!jobId) return;
+    try {
+      setAction(`approve-${attendanceId}`);
+      await attendanceService.approveAttendance(attendanceId);
+      await refreshData(Number(jobId));
+    } catch (err) {
+      setError("Failed to approve attendance");
+      console.error(err);
+    } finally {
+      setAction(undefined);
+    }
+  };
+
+  const handleReportIssue = async (attendanceId: number) => {
     if (!jobId) return;
 
+    const reason = window.prompt("Enter issue reason");
+    if (!reason?.trim()) {
+      return;
+    }
+
     try {
-      setAction(`${status}-${workerId}`);
-      await attendanceService.markAttendance(Number(jobId), workerId, {
-        status,
+      setAction(`issue-${attendanceId}`);
+      await attendanceService.reportIssue(attendanceId, {
+        reason: reason.trim(),
       });
       await refreshData(Number(jobId));
     } catch (err) {
-      setError("Failed to update attendance");
+      setError("Failed to report attendance issue");
+      console.error(err);
+    } finally {
+      setAction(undefined);
+    }
+  };
+
+  const handleRaiseDispute = async (attendanceId: number) => {
+    const reason = window.prompt("Enter dispute reason");
+    if (!reason?.trim()) {
+      return;
+    }
+
+    const description = window.prompt("Enter dispute description") ?? "";
+    if (!description.trim()) {
+      setError("Dispute description is required");
+      return;
+    }
+
+    try {
+      setAction(`dispute-${attendanceId}`);
+      await disputeService.createDispute({
+        jobId: Number(jobId),
+        attendanceId,
+        reason: reason.trim(),
+        description: description.trim(),
+      });
+    } catch (err) {
+      setError("Failed to create dispute");
       console.error(err);
     } finally {
       setAction(undefined);
@@ -143,7 +218,6 @@ export const EmployerJobDetailsPage = () => {
         </div>
       )}
 
-      {/* Job Details */}
       <div className="rounded-panel bg-white p-5 shadow-panel">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -213,7 +287,7 @@ export const EmployerJobDetailsPage = () => {
           <>
             <hr className="my-4" />
             <div>
-              <p className="text-sm font-medium text-slate-900 mb-3">
+              <p className="mb-3 text-sm font-medium text-slate-900">
                 Selected Workers Attendance
               </p>
               <div className="space-y-3">
@@ -221,8 +295,10 @@ export const EmployerJobDetailsPage = () => {
                   const attendance = attendanceRecords.find(
                     (record) => record.workerId === selectedApplicant.workerId,
                   );
-                  const hasCheckedIn = Boolean(attendance?.checkInTime);
-                  const hasCheckedOut = Boolean(attendance?.checkOutTime);
+                  const status = attendance?.status ?? selectedApplicant.status;
+                  const canReview = attendance?.status === "PENDING_REVIEW";
+                  const canRaiseDispute =
+                    attendance?.status === "ISSUE_REPORTED";
 
                   return (
                     <div
@@ -230,64 +306,81 @@ export const EmployerJobDetailsPage = () => {
                       className="rounded-lg border border-slate-200 bg-slate-50 p-4"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div>
+                        <div className="space-y-1">
                           <p className="font-medium text-slate-900">
-                            {selectedApplicant.worker?.name ?? "Worker"}
+                            {attendance?.worker?.name ??
+                              selectedApplicant.worker?.name ??
+                              "Worker"}
                           </p>
                           <p className="text-sm text-slate-600">
                             Reliability:{" "}
                             {selectedApplicant.worker?.reliabilityScore ?? 0}
                           </p>
-                          <p className="text-xs text-slate-500">
-                            Entry:{" "}
-                            {hasCheckedIn
+                          <p className="text-sm text-slate-600">
+                            Check in:{" "}
+                            {attendance?.checkInTime
                               ? new Date(
                                   attendance.checkInTime,
                                 ).toLocaleTimeString()
                               : "Not marked"}
                           </p>
-                          <p className="text-xs text-slate-500">
-                            Exit:{" "}
-                            {hasCheckedOut
+                          <p className="text-sm text-slate-600">
+                            Check out:{" "}
+                            {attendance?.checkOutTime
                               ? new Date(
                                   attendance.checkOutTime,
                                 ).toLocaleTimeString()
                               : "Not marked"}
                           </p>
+                          <p className="text-sm text-slate-600">
+                            Hours worked: {attendance?.totalHours ?? "-"}
+                          </p>
                         </div>
-                        <StatusBadge status={selectedApplicant.status} />
+                        <StatusBadge status={status} />
                       </div>
 
                       <div className="mt-3 flex flex-wrap gap-2">
                         <Button
                           variant="outline"
                           onClick={() =>
-                            handleMarkAttendance(
-                              selectedApplicant.workerId,
-                              "PRESENT",
-                            )
+                            attendance && handleApproveAttendance(attendance.id)
                           }
-                          disabled={hasCheckedIn}
+                          disabled={!canReview}
                           loading={
-                            action === `PRESENT-${selectedApplicant.workerId}`
+                            attendance
+                              ? action === `approve-${attendance.id}`
+                              : false
                           }
                         >
-                          Mark Entry
+                          Approve
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() =>
-                            handleMarkAttendance(
-                              selectedApplicant.workerId,
-                              "COMPLETED",
-                            )
+                            attendance && handleReportIssue(attendance.id)
                           }
-                          disabled={!hasCheckedIn || hasCheckedOut}
+                          disabled={!canReview}
                           loading={
-                            action === `COMPLETED-${selectedApplicant.workerId}`
+                            attendance
+                              ? action === `issue-${attendance.id}`
+                              : false
                           }
                         >
-                          Mark Exit
+                          Report Issue
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            attendance && handleRaiseDispute(attendance.id)
+                          }
+                          disabled={!canRaiseDispute}
+                          loading={
+                            attendance
+                              ? action === `dispute-${attendance.id}`
+                              : false
+                          }
+                        >
+                          Raise Dispute
                         </Button>
                       </div>
                     </div>
@@ -299,7 +392,6 @@ export const EmployerJobDetailsPage = () => {
         )}
       </div>
 
-      {/* Action Buttons */}
       <div className="space-y-3">
         {job.status === "OPEN" && (
           <>

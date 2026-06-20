@@ -3,6 +3,7 @@ import { z } from "zod";
 export const createDisputeSchema = z.object({
   body: z.object({
     jobId: z.number().int().positive(),
+    attendanceId: z.number().int().positive().optional(),
     reason: z.string().trim().min(3),
     description: z.string().trim().min(10),
   }),

@@ -33,20 +33,19 @@ export const LocationPicker = ({
   label = "Job Location",
 }: LocationPickerProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-
   const map = useRef<any>(null);
-
   const currentLocationMarker = useRef<any>(null);
-
   const jobLocationMarker = useRef<any>(null);
-
   const watchIdRef = useRef<number | null>(null);
-
   const fetchTimeoutRef = useRef<any>(null);
-
   const searchTimeoutRef = useRef<any>(null);
-
   const lastMapUpdateAtRef = useRef(0);
+
+  // FIX 1: Request guard tracking reference to prevent out-of-order responses
+  const latestRequestRef = useRef(0);
+
+  // FIX 4: Guard to ensure auto-GPS centering only happens once if needed
+  const hasInitializedLocationRef = useRef(false);
 
   const lastAutofillRef = useRef({
     locationLine1: "",
@@ -56,31 +55,33 @@ export const LocationPicker = ({
 
   // LIVE JOB LOCATION REFS
   const jobLatRef = useRef(latitude || 20.5937);
-
   const jobLngRef = useRef(longitude || 78.9629);
 
   const [loading, setLoading] = useState(false);
-
   const [locationError, setLocationError] = useState<string>();
-
   const [jobLatitude, setJobLatitude] = useState(jobLatRef.current);
-
   const [jobLongitude, setJobLongitude] = useState(jobLngRef.current);
 
-  const [locationName, setLocationName] = useState("Fetching location...");
-
+  // FIX 2: Initialize string coordinates immediately instead of a hardcoded string
+  const [locationName, setLocationName] = useState(
+    `${jobLatRef.current.toFixed(6)}, ${jobLngRef.current.toFixed(6)}`,
+  );
   const [fetchingAddress, setFetchingAddress] = useState(false);
 
   // UPDATE LOCATION DATA
   const updateLocationData = async (lat: number, lng: number) => {
+    // FIX 1: Increment request identifier immediately
+    const requestId = ++latestRequestRef.current;
+
     jobLatRef.current = lat;
     jobLngRef.current = lng;
+
+    console.log("🟢 updateLocationData", lat, lng);
 
     lastMapUpdateAtRef.current = Date.now();
 
     setJobLatitude(lat);
     setJobLongitude(lng);
-
     onLocationChange(lat, lng);
 
     if (searchTimeoutRef.current) {
@@ -96,6 +97,11 @@ export const LocationPicker = ({
 
       try {
         const address = await getAddressFromCoordinates(lat, lng);
+
+        // FIX 1: Drop old asynchronous resolution updates if a newer drag occurred
+        if (requestId !== latestRequestRef.current) {
+          return;
+        }
 
         setLocationName(address.fullAddress);
 
@@ -113,9 +119,13 @@ export const LocationPicker = ({
         onCityChange(nextCity);
         onLandmarkAreaChange(nextLandmarkArea);
       } catch (err) {
-        setLocationName(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        if (requestId === latestRequestRef.current) {
+          setLocationName(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        }
       } finally {
-        setFetchingAddress(false);
+        if (requestId === latestRequestRef.current) {
+          setFetchingAddress(false);
+        }
       }
     }, 300);
   };
@@ -126,7 +136,6 @@ export const LocationPicker = ({
 
     try {
       const query = `${locationLine1} ${landmarkArea} ${city}`.trim();
-
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
           query,
@@ -137,7 +146,6 @@ export const LocationPicker = ({
 
       if (data?.length > 0) {
         const lat = parseFloat(data[0].lat);
-
         const lng = parseFloat(data[0].lon);
 
         setLocationName(
@@ -146,10 +154,8 @@ export const LocationPicker = ({
 
         jobLatRef.current = lat;
         jobLngRef.current = lng;
-
         setJobLatitude(lat);
         setJobLongitude(lng);
-
         onLocationChange(lat, lng);
 
         // MOVE MARKER
@@ -165,35 +171,6 @@ export const LocationPicker = ({
     }
   };
 
-  useEffect(() => {
-    if (!locationLine1 && !city && !landmarkArea) return;
-
-    const now = Date.now();
-    const lastAutofill = lastAutofillRef.current;
-    const isAutofillMatch =
-      lastAutofill.locationLine1 === locationLine1 &&
-      lastAutofill.city === city &&
-      lastAutofill.landmarkArea === landmarkArea;
-
-    if (isAutofillMatch && now - lastMapUpdateAtRef.current < 1500) {
-      return;
-    }
-
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    searchTimeoutRef.current = setTimeout(() => {
-      searchLocation();
-    }, 450);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [locationLine1, city, landmarkArea]);
-
   // INITIALIZE MAP
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -207,22 +184,16 @@ export const LocationPicker = ({
         } else {
           // CSS
           const link = document.createElement("link");
-
           link.rel = "stylesheet";
-
           link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-
           document.head.appendChild(link);
 
           // JS
           const script = document.createElement("script");
-
           script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-
           script.onload = () => {
             initializeMap();
           };
-
           document.body.appendChild(script);
         }
       } catch (err) {
@@ -251,10 +222,8 @@ export const LocationPicker = ({
       const redMarkerIcon = L.icon({
         iconUrl:
           "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-
         shadowUrl:
           "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-
         iconSize: [25, 41],
         iconAnchor: [12, 41],
       });
@@ -283,16 +252,13 @@ export const LocationPicker = ({
       // DRAG END
       jobLocationMarker.current.on("dragend", () => {
         const newLatLng = jobLocationMarker.current.getLatLng();
-
+        console.log("🔴 MARKER DRAGGED", newLatLng);
         updateLocationData(newLatLng.lat, newLatLng.lng);
       });
 
       // MAP CLICK
       map.current.on("click", (e: any) => {
         const { lat, lng } = e.latlng;
-
-        // IMPORTANT
-        // DO NOT UPDATE STATE FIRST
 
         jobLatRef.current = lat;
         jobLngRef.current = lng;
@@ -311,7 +277,6 @@ export const LocationPicker = ({
         watchIdRef.current = navigator.geolocation.watchPosition(
           (position) => {
             const lat = position.coords.latitude;
-
             const lng = position.coords.longitude;
 
             // ONLY MOVE BLUE DOT
@@ -328,8 +293,8 @@ export const LocationPicker = ({
         );
       }
 
-      // INITIAL DATA
-      updateLocationData(jobLatRef.current, jobLngRef.current);
+      // FIX 2: REMOVED updateLocationData execution block here entirely.
+      // Startup geocode race condition completely eliminated!
 
       // RESIZE FIX
       handleResize = () => {
@@ -356,14 +321,20 @@ export const LocationPicker = ({
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
 
+      // FIX 3: Nullify ref during teardown to avoid memory links/dangling references
       if (map.current) {
         map.current.remove();
+        map.current = null;
       }
     };
   }, []);
 
   // USE CURRENT LOCATION
   const handleUseCurrentLocation = async () => {
+    // FIX 4: Only allow automated GPS center action once if targeted
+    if (hasInitializedLocationRef.current) return;
+    hasInitializedLocationRef.current = true;
+
     setLoading(true);
 
     try {
@@ -390,6 +361,8 @@ export const LocationPicker = ({
       map.current?.setView([location.latitude, location.longitude], 16);
     } catch (err) {
       setLocationError("Failed to get location");
+      // Reset initialization flag so the user can re-try clicking the button
+      hasInitializedLocationRef.current = false;
     } finally {
       setLoading(false);
     }

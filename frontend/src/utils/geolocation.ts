@@ -21,6 +21,19 @@ export const calculateDistance = (
   return R * c;
 };
 
+const mapGeolocationError = (code: number): string => {
+  switch (code) {
+    case 1:
+      return "Location permission denied. Please allow location access to continue.";
+    case 2:
+      return "GPS unavailable. Please turn on location services and try again.";
+    case 3:
+      return "Location request timed out. Please try again.";
+    default:
+      return "Unable to get your location. Please try again.";
+  }
+};
+
 /**
  * Get user's current location
  */
@@ -43,12 +56,12 @@ export const getCurrentLocation = (): Promise<{
         });
       },
       (error) => {
-        reject(new Error(`Geolocation error: ${error.message}`));
+        reject(new Error(mapGeolocationError(error.code)));
       },
       {
-        enableHighAccuracy: false,
-        timeout: 20000,
-        maximumAge: 30000,
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
       },
     );
   });

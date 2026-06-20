@@ -74,18 +74,14 @@ export const BrowseJobsPage = () => {
         setLoading(true);
         let data;
 
-        if (workerLocation) {
-          // Use nearby API when we have worker coordinates
-          data = await jobService.getNearbyJobs({
-            latitude: workerLocation.latitude,
-            longitude: workerLocation.longitude,
-            radius,
-          });
-        } else {
+       
           data = await jobService.getOpenJobs({
             category: category || undefined,
+            latitude: workerLocation?.latitude,
+            longitude: workerLocation?.longitude,
+            radius,
           });
-        }
+        
 
         // If backend returned distances, use them. Otherwise compute client-side.
         const jobsWithDistance = data.map((job: any) => ({
@@ -112,7 +108,7 @@ export const BrowseJobsPage = () => {
     };
 
     fetchJobs();
-  }, [category, workerLocation]);
+  }, [category, workerLocation, radius]);
 
   const categories = [
     { label: "All Categories", value: "" },

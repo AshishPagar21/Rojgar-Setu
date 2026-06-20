@@ -4,12 +4,22 @@ export const checkInSchema = z.object({
   params: z.object({
     jobId: z.string().transform((v) => parseInt(v, 10)),
   }),
+  body: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+  }),
+  query: z.object({}),
 });
 
 export const checkOutSchema = z.object({
   params: z.object({
     jobId: z.string().transform((v) => parseInt(v, 10)),
   }),
+  body: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+  }),
+  query: z.object({}),
 });
 
 export const getJobAttendanceSchema = z.object({
@@ -18,14 +28,20 @@ export const getJobAttendanceSchema = z.object({
   }),
 });
 
-export const markAttendanceSchema = z.object({
+export const approveAttendanceSchema = z.object({
   params: z.object({
-    jobId: z.string().transform((v) => parseInt(v, 10)),
-    workerId: z.string().transform((v) => parseInt(v, 10)),
+    attendanceId: z.string().transform((v) => parseInt(v, 10)),
+  }),
+  body: z.object({}),
+  query: z.object({}),
+});
+
+export const reportIssueSchema = z.object({
+  params: z.object({
+    attendanceId: z.string().transform((v) => parseInt(v, 10)),
   }),
   body: z.object({
-    status: z.enum(["PRESENT", "ABSENT", "LEFT_EARLY", "COMPLETED"]),
-    notes: z.string().trim().optional(),
+    reason: z.string().trim().min(1),
   }),
   query: z.object({}),
 });

@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { emitToUser, SOCKET_EVENTS } from "../../socket/socket.server";
 
 export const notificationService = {
   async createNotification(params: {
@@ -7,7 +8,17 @@ export const notificationService = {
     message: string;
     type: string;
   }) {
-    return prisma.notification.create({ data: params });
+    const notification = await prisma.notification.create({ data: params });
+
+    emitToUser(notification.userId, SOCKET_EVENTS.notificationNew, {
+      id: notification.id,
+      title: notification.title,
+      message: notification.message,
+      type: notification.type,
+      createdAt: notification.createdAt.toISOString(),
+    });
+
+    return notification;
   },
 
   async getMyNotifications(userId: number) {

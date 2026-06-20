@@ -21,6 +21,22 @@ export const calculateDistance = (
   return R * c;
 };
 
+export const calculateDistanceMeters = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number => calculateDistance(lat1, lon1, lat2, lon2) * 1000;
+
+export const isWithinDistanceMeters = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+  maxDistanceMeters: number,
+): boolean =>
+  calculateDistanceMeters(lat1, lon1, lat2, lon2) <= maxDistanceMeters;
+
 /**
  * SQL formula for calculating distance between coordinates
  * Used in Prisma raw queries

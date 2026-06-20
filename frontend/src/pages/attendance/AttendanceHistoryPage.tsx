@@ -66,9 +66,12 @@ export const AttendanceHistoryPage = () => {
                 <p className="text-slate-600">
                   Status: <StatusBadge status={record.status} />
                 </p>
-                <p className="text-slate-600">
-                  Check-in: {new Date(record.checkInTime).toLocaleTimeString()}
-                </p>
+                {record.checkInTime && (
+                  <p className="text-slate-600">
+                    Check-in:{" "}
+                    {new Date(record.checkInTime).toLocaleTimeString()}
+                  </p>
+                )}
                 {record.checkOutTime && (
                   <>
                     <p className="text-slate-600">

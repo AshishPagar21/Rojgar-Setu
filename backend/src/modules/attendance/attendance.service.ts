@@ -1,28 +1,82 @@
 import { prisma } from "../../config/prisma";
+import { emitToUsers, SOCKET_EVENTS } from "../../socket/socket.server";
 import { HTTP_STATUS } from "../../utils/constants";
+import { isWithinDistanceMeters } from "../../utils/geolocation";
 import { ApiError } from "../../utils/response";
+import { notificationService } from "../notification/notification.service";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
-const updateWorkerReliability = async (
-  workerId: number,
-  status: "PRESENT" | "ABSENT" | "LEFT_EARLY" | "COMPLETED",
+const MAX_CHECKIN_DISTANCE_METERS = 200;
+
+const assertJobCoordinates = (
+  jobLatitude: number,
+  jobLongitude: number,
+  latitude: number,
+  longitude: number,
 ) => {
+  const withinRadius = isWithinDistanceMeters(
+    latitude,
+    longitude,
+    jobLatitude,
+    jobLongitude,
+    MAX_CHECKIN_DISTANCE_METERS,
+  );
+
+  if (!withinRadius) {
+    throw new ApiError(
+      HTTP_STATUS.BAD_REQUEST,
+      "You must be within 200 meters of the job location.",
+    );
+  }
+};
+
+const loadAttendanceParticipants = async (jobId: number, workerId: number) => {
+  const [job, worker] = await Promise.all([
+    prisma.job.findUnique({
+      where: { id: jobId },
+      include: {
+        employer: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    }),
+    prisma.worker.findUnique({
+      where: { id: workerId },
+      include: {
+        user: true,
+      },
+    }),
+  ]);
+
+  if (!job) {
+    throw new ApiError(HTTP_STATUS.NOT_FOUND, "Job not found");
+  }
+
+  if (!worker) {
+    throw new ApiError(HTTP_STATUS.NOT_FOUND, "Worker profile not found");
+  }
+
+  return { job, worker };
+};
+
+const emitAttendanceUpdate = (
+  userIds: number[],
+  event: string,
+  attendance: Record<string, unknown>,
+) => {
+  emitToUsers(userIds, event, attendance);
+};
+
+const increaseWorkerReliability = async (workerId: number, delta = 2) => {
   const worker = await prisma.worker.findUnique({ where: { id: workerId } });
 
   if (!worker) {
     return;
   }
-
-  const delta =
-    status === "COMPLETED"
-      ? 2
-      : status === "PRESENT"
-        ? 1
-        : status === "LEFT_EARLY"
-          ? -5
-          : -10;
 
   await prisma.worker.update({
     where: { id: workerId },
@@ -36,7 +90,11 @@ export const attendanceService = {
   /**
    * Worker checks in to a job
    */
-  async checkIn(jobId: number, workerId: number) {
+  async checkIn(
+    jobId: number,
+    workerId: number,
+    payload: { latitude: number; longitude: number },
+  ) {
     // Verify worker has SELECTED status for this job
     const jobApplication = await prisma.jobApplication.findUnique({
       where: { jobId_workerId: { jobId, workerId } },
@@ -50,13 +108,7 @@ export const attendanceService = {
     }
 
     // Verify job is ASSIGNED
-    const job = await prisma.job.findUnique({
-      where: { id: jobId },
-    });
-
-    if (!job) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Job not found");
-    }
+    const { job, worker } = await loadAttendanceParticipants(jobId, workerId);
 
     if (job.status !== "ASSIGNED") {
       throw new ApiError(
@@ -66,38 +118,54 @@ export const attendanceService = {
     }
 
     // Check if already checked in
-    const existingAttendance = await prisma.attendance.findFirst({
-      where: { jobId, workerId, checkInTime: { not: null } },
+    const existingAttendance = await prisma.attendance.findUnique({
+      where: { jobId_workerId: { jobId, workerId } },
     });
 
-    if (existingAttendance && !existingAttendance.checkOutTime) {
+    if (existingAttendance?.status === "CHECKED_IN") {
       throw new ApiError(
         HTTP_STATUS.BAD_REQUEST,
         "You have already checked in for this job",
       );
     }
 
-    // Create a new attendance record or refresh check-in on latest record.
-    const latestAttendance = await prisma.attendance.findFirst({
-      where: { jobId, workerId },
-      orderBy: { createdAt: "desc" },
+    if (existingAttendance) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        "Attendance has already been submitted for this job",
+      );
+    }
+
+    assertJobCoordinates(
+      job.latitude,
+      job.longitude,
+      payload.latitude,
+      payload.longitude,
+    );
+
+    const attendance = await prisma.attendance.create({
+      data: {
+        jobId,
+        workerId,
+        checkInTime: new Date(),
+        checkInLatitude: payload.latitude,
+        checkInLongitude: payload.longitude,
+        status: "CHECKED_IN",
+      },
     });
 
-    const attendance = latestAttendance
-      ? await prisma.attendance.update({
-          where: { id: latestAttendance.id },
-          data: { checkInTime: new Date(), status: "PRESENT" },
-        })
-      : await prisma.attendance.create({
-          data: {
-            jobId,
-            workerId,
-            checkInTime: new Date(),
-            status: "PRESENT",
-          },
-        });
+    await notificationService.createNotification({
+      userId: job.employer.userId,
+      title: "Worker checked in",
+      message: `${worker.name} checked in for ${job.title}.`,
+      type: "ATTENDANCE_CHECKED_IN",
+    });
 
-    await updateWorkerReliability(workerId, "PRESENT");
+    emitAttendanceUpdate(
+      [job.employer.userId, worker.userId],
+      SOCKET_EVENTS.attendanceCheckedIn,
+      attendance,
+    );
 
     return attendance;
   },
@@ -105,9 +173,29 @@ export const attendanceService = {
   /**
    * Worker checks out from a job
    */
-  async checkOut(jobId: number, workerId: number) {
-    const attendance = await prisma.attendance.findFirst({
-      where: { jobId, workerId, checkInTime: { not: null } },
+  async checkOut(
+    jobId: number,
+    workerId: number,
+    payload: { latitude: number; longitude: number },
+  ) {
+    const attendance = await prisma.attendance.findUnique({
+      where: { jobId_workerId: { jobId, workerId } },
+      include: {
+        job: {
+          include: {
+            employer: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
+        worker: {
+          include: {
+            user: true,
+          },
+        },
+      },
     });
 
     if (!attendance) {
@@ -117,12 +205,19 @@ export const attendanceService = {
       );
     }
 
-    if (attendance.checkOutTime) {
+    if (attendance.status !== "CHECKED_IN") {
       throw new ApiError(
         HTTP_STATUS.BAD_REQUEST,
-        "You have already checked out for this job",
+        "Attendance is not open for checkout",
       );
     }
+
+    assertJobCoordinates(
+      attendance.job.latitude,
+      attendance.job.longitude,
+      payload.latitude,
+      payload.longitude,
+    );
 
     const checkOutTime = new Date();
     const totalHours = attendance.checkInTime
@@ -135,94 +230,156 @@ export const attendanceService = {
       data: {
         checkOutTime: checkOutTime,
         totalHours: Math.round(totalHours * 100) / 100, // Round to 2 decimals
-        status: "COMPLETED",
+        checkOutLatitude: payload.latitude,
+        checkOutLongitude: payload.longitude,
+        status: "PENDING_REVIEW",
       },
     });
 
-    await prisma.jobApplication.update({
-      where: { jobId_workerId: { jobId, workerId } },
-      data: { status: "COMPLETED", completedAt: new Date() },
+    await notificationService.createNotification({
+      userId: attendance.job.employer.userId,
+      title: "Worker checked out",
+      message: `${attendance.worker.name} checked out from ${attendance.job.title}.`,
+      type: "ATTENDANCE_CHECKED_OUT",
     });
 
-    await updateWorkerReliability(workerId, "COMPLETED");
+    emitAttendanceUpdate(
+      [attendance.job.employer.userId, attendance.worker.userId],
+      SOCKET_EVENTS.attendanceCheckedOut,
+      updatedAttendance,
+    );
 
     return updatedAttendance;
   },
 
-  async markAttendanceByEmployer(
-    jobId: number,
-    employerId: number,
-    workerId: number,
-    status: "PRESENT" | "ABSENT" | "LEFT_EARLY" | "COMPLETED",
-    notes?: string,
-  ) {
-    const job = await prisma.job.findUnique({ where: { id: jobId } });
+  async approveAttendance(attendanceId: number, employerId: number) {
+    const attendance = await prisma.attendance.findUnique({
+      where: { id: attendanceId },
+      include: {
+        job: {
+          include: {
+            employer: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
+        worker: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
 
-    if (!job) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Job not found");
+    if (!attendance) {
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Attendance not found");
     }
 
-    if (job.employerId !== employerId) {
+    if (attendance.job.employerId !== employerId) {
       throw new ApiError(
         HTTP_STATUS.FORBIDDEN,
-        "You can only mark attendance for your own jobs",
+        "You can only approve attendance for your own jobs",
       );
     }
 
-    const application = await prisma.jobApplication.findUnique({
-      where: { jobId_workerId: { jobId, workerId } },
-    });
-
-    if (!application || application.status !== "SELECTED") {
+    if (attendance.status !== "PENDING_REVIEW") {
       throw new ApiError(
         HTTP_STATUS.BAD_REQUEST,
-        "Only selected workers can be marked for attendance",
+        "Only pending attendance can be approved",
       );
     }
 
-    const attendance = await prisma.attendance.upsert({
-      where: { jobId_workerId: { jobId, workerId } },
-      create: {
-        jobId,
-        workerId,
-        status,
-        notes,
-        checkInTime:
-          status === "PRESENT" || status === "COMPLETED" ? new Date() : null,
-        checkOutTime: status === "COMPLETED" ? new Date() : null,
-      },
-      update: {
-        status,
-        notes,
-        checkInTime:
-          status === "PRESENT" || status === "COMPLETED"
-            ? new Date()
-            : undefined,
-        checkOutTime: status === "COMPLETED" ? new Date() : undefined,
+    const updatedAttendance = await prisma.attendance.update({
+      where: { id: attendanceId },
+      data: {
+        status: "APPROVED",
+        reviewedAt: new Date(),
       },
     });
 
-    if (status === "COMPLETED") {
-      await prisma.jobApplication.update({
-        where: { jobId_workerId: { jobId, workerId } },
-        data: { status: "COMPLETED", completedAt: new Date() },
-      });
-    }
+    await notificationService.createNotification({
+      userId: attendance.worker.userId,
+      title: "Attendance approved",
+      message: `Your attendance for ${attendance.job.title} was approved.`,
+      type: "ATTENDANCE_APPROVED",
+    });
 
-    if (status === "ABSENT") {
-      await prisma.notification.create({
-        data: {
-          userId: application.workerId,
-          title: "Attendance Update",
-          message: `You were marked absent for ${job.title}.`,
-          type: "ATTENDANCE_ABSENT",
+    await increaseWorkerReliability(attendance.workerId, 2);
+
+    emitAttendanceUpdate(
+      [attendance.job.employer.userId, attendance.worker.userId],
+      SOCKET_EVENTS.attendanceApproved,
+      updatedAttendance,
+    );
+
+    return updatedAttendance;
+  },
+
+  async reportIssue(attendanceId: number, employerId: number, reason?: string) {
+    const attendance = await prisma.attendance.findUnique({
+      where: { id: attendanceId },
+      include: {
+        job: {
+          include: {
+            employer: {
+              include: {
+                user: true,
+              },
+            },
+          },
         },
-      });
+        worker: {
+          select: {
+            userId: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!attendance) {
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Attendance not found");
     }
 
-    await updateWorkerReliability(workerId, status);
+    if (attendance.job.employerId !== employerId) {
+      throw new ApiError(
+        HTTP_STATUS.FORBIDDEN,
+        "You can only report an issue for your own jobs",
+      );
+    }
 
-    return attendance;
+    if (attendance.status !== "PENDING_REVIEW") {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        "Only pending attendance can be reported",
+      );
+    }
+
+    const updatedAttendance = await prisma.attendance.update({
+      where: { id: attendanceId },
+      data: {
+        status: "ISSUE_REPORTED",
+        notes: reason,
+        reviewedAt: new Date(),
+      },
+    });
+
+    await notificationService.createNotification({
+      userId: attendance.worker.userId,
+      title: "Attendance issue reported",
+      message: `An issue was reported for your attendance on ${attendance.job.title}.`,
+      type: "ATTENDANCE_ISSUE_REPORTED",
+    });
+
+    emitAttendanceUpdate(
+      [attendance.job.employer.userId, attendance.worker.userId],
+      SOCKET_EVENTS.attendanceIssueReported,
+      updatedAttendance,
+    );
+
+    return updatedAttendance;
   },
 
   /**

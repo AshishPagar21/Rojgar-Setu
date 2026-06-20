@@ -1,8 +1,9 @@
-import { createContext, useMemo, useState } from "react";
+import { createContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { authStorage } from "../modules/auth/auth.storage";
 import type { AuthProfile, User } from "../types/common.types";
+import { socketService } from "../services/socket.service";
 
 interface AuthContextValue {
   user: User | null;
@@ -45,7 +46,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     setUser(null);
     setProfile(null);
+    socketService.disconnect();
   };
+
+  useEffect(() => {
+    if (token) {
+      socketService.connect(token);
+      return;
+    }
+
+    socketService.disconnect();
+  }, [token]);
 
   const value = useMemo(
     () => ({

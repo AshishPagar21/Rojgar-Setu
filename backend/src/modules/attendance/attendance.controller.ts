@@ -37,7 +37,15 @@ export const attendanceController = {
       }
 
       const jobId = parseInt(req.params.jobId as string, 10);
-      const attendance = await attendanceService.checkIn(jobId, worker.id);
+      const { latitude, longitude } = req.body as {
+        latitude: number;
+        longitude: number;
+      };
+
+      const attendance = await attendanceService.checkIn(jobId, worker.id, {
+        latitude,
+        longitude,
+      });
       sendSuccess(res, HTTP_STATUS.OK, "Checked in successfully", attendance);
     } catch (error) {
       next(error);
@@ -75,7 +83,15 @@ export const attendanceController = {
       }
 
       const jobId = parseInt(req.params.jobId as string, 10);
-      const attendance = await attendanceService.checkOut(jobId, worker.id);
+      const { latitude, longitude } = req.body as {
+        latitude: number;
+        longitude: number;
+      };
+
+      const attendance = await attendanceService.checkOut(jobId, worker.id, {
+        latitude,
+        longitude,
+      });
       sendSuccess(res, HTTP_STATUS.OK, "Checked out successfully", attendance);
     } catch (error) {
       next(error);
@@ -170,7 +186,7 @@ export const attendanceController = {
     }
   },
 
-  async markAttendance(
+  async approveAttendance(
     req: Request,
     res: Response,
     next: NextFunction,
@@ -197,25 +213,63 @@ export const attendanceController = {
         return;
       }
 
-      const jobId = parseInt(req.params.jobId as string, 10);
-      const workerId = parseInt(req.params.workerId as string, 10);
-      const { status, notes } = req.body as {
-        status: "PRESENT" | "ABSENT" | "LEFT_EARLY" | "COMPLETED";
-        notes?: string;
-      };
-
-      const attendance = await attendanceService.markAttendanceByEmployer(
-        jobId,
+      const attendanceId = parseInt(req.params.attendanceId as string, 10);
+      const attendance = await attendanceService.approveAttendance(
+        attendanceId,
         employer.id,
-        workerId,
-        status,
-        notes,
       );
 
       sendSuccess(
         res,
         HTTP_STATUS.OK,
-        "Attendance updated successfully",
+        "Attendance approved successfully",
+        attendance,
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async reportIssue(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: "Unauthorized",
+        });
+        return;
+      }
+
+      const employer = await prisma.employer.findUnique({
+        where: { userId },
+      });
+
+      if (!employer) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({
+          success: false,
+          message: "Employer profile not found",
+        });
+        return;
+      }
+
+      const attendanceId = parseInt(req.params.attendanceId as string, 10);
+      const { reason } = req.body as { reason?: string };
+
+      const attendance = await attendanceService.reportIssue(
+        attendanceId,
+        employer.id,
+        reason,
+      );
+
+      sendSuccess(
+        res,
+        HTTP_STATUS.OK,
+        "Attendance issue reported successfully",
         attendance,
       );
     } catch (error) {

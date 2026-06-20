@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
+
+import  toast  from "react-hot-toast";
+
 import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
+import { useAuth } from "../../hooks/useAuth";
+import { disputeService } from "../../modules/dispute/dispute.service";
 import { jobService } from "../../modules/job/job.service";
 import { jobApplicationService } from "../../modules/jobApplication/jobApplication.service";
 import { attendanceService } from "../../modules/attendance/attendance.service";
+import { socketService } from "../../services/socket.service";
 import { getErrorMessage } from "../../utils/helpers";
+import { getCurrentLocation } from "../../utils/geolocation";
 
 const extractLocation = (description?: string | null) => {
   if (!description) {
@@ -28,6 +35,7 @@ const getSelectedWorkers = (job: any) =>
 
 export const WorkerJobDetailsPage = () => {
   const { jobId } = useParams<{ jobId: string }>();
+  const { profile } = useAuth();
   const [job, setJob] = useState<any>(null);
   const [application, setApplication] = useState<any>(null);
   const [attendance, setAttendance] = useState<any>(null);
@@ -76,6 +84,43 @@ export const WorkerJobDetailsPage = () => {
     fetchData();
   }, [jobId]);
 
+  useEffect(() => {
+    const refreshAttendance = async (payload: {
+      jobId: number;
+      workerId: number;
+    }) => {
+      if (payload.jobId !== Number(jobId)) {
+        return;
+      }
+
+      if (profile?.worker?.id && payload.workerId !== profile.worker.id) {
+        return;
+      }
+
+      try {
+        const attendanceHistory = await attendanceService.getMyAttendance();
+        const jobAttendance = attendanceHistory.find(
+          (record: any) => record.jobId === Number(jobId),
+        );
+        setAttendance(jobAttendance ?? null);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    socketService.on("attendance:checked-in", refreshAttendance);
+    socketService.on("attendance:checked-out", refreshAttendance);
+    socketService.on("attendance:approved", refreshAttendance);
+    socketService.on("attendance:issue-reported", refreshAttendance);
+
+    return () => {
+      socketService.off("attendance:checked-in", refreshAttendance);
+      socketService.off("attendance:checked-out", refreshAttendance);
+      socketService.off("attendance:approved", refreshAttendance);
+      socketService.off("attendance:issue-reported", refreshAttendance);
+    };
+  }, [jobId, profile?.worker?.id]);
+
   const handleApply = async () => {
     if (!jobId) return;
     try {
@@ -92,36 +137,114 @@ export const WorkerJobDetailsPage = () => {
     }
   };
 
+  const refreshAttendance = async () => {
+  if (!jobId) return;
+
+  const attendanceHistory = await attendanceService.getMyAttendance();
+
+  const jobAttendance = attendanceHistory.find(
+    (record: any) => record.jobId === Number(jobId),
+  );
+
+  setAttendance(jobAttendance ?? null);
+};
+
   const handleCheckIn = async () => {
-    if (!jobId) return;
-    try {
-      setAction("checking-in");
-      await attendanceService.checkIn(Number(jobId));
-      const attendanceHistory = await attendanceService.getMyAttendance();
-      const jobAttendance = attendanceHistory.find(
-        (record: any) => record.jobId === Number(jobId),
+  if (!jobId) return;
+
+  try {
+    setLoading(true);
+
+    const location = await getCurrentLocation();
+
+    await attendanceService.checkIn(Number(jobId), {
+      latitude: location.latitude,
+      longitude: location.longitude,
+    });
+
+    toast.success("Check-in successful");
+
+    await refreshAttendance();
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.message ||
+      "Failed to mark attendance";
+
+    if (message.includes("200 meters")) {
+      toast.error(
+        "You are not at the work location. Move within 200 meters and try again.",
       );
-      setAttendance(jobAttendance ?? null);
-    } catch (err) {
-      setError(getErrorMessage(err));
-      console.error(err);
-    } finally {
-      setAction(undefined);
+    } else {
+      toast.error(message);
     }
-  };
+
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleCheckOut = async () => {
-    if (!jobId) return;
-    try {
-      setAction("checking-out");
-      await attendanceService.checkOut(Number(jobId));
-      const attendanceHistory = await attendanceService.getMyAttendance();
-      const jobAttendance = attendanceHistory.find(
-        (record: any) => record.jobId === Number(jobId),
+  if (!jobId) return;
+
+  try {
+    setLoading(true);
+
+    const location = await getCurrentLocation();
+
+    await attendanceService.checkOut(Number(jobId), {
+      latitude: location.latitude,
+      longitude: location.longitude,
+    });
+
+    toast.success(
+      "Check-out successful. Waiting for employer review.",
+    );
+
+    await refreshAttendance();
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.message ||
+      "Failed to check out";
+
+    if (message.includes("200 meters")) {
+      toast.error(
+        "You must be at the work location to check out.",
       );
-      setAttendance(jobAttendance ?? null);
+    } else {
+      toast.error(message);
+    }
+
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleRaiseDispute = async () => {
+    if (!jobId || !attendance) return;
+
+    const reason = window.prompt("Enter dispute reason");
+    if (!reason?.trim()) {
+      return;
+    }
+
+    const description = window.prompt("Enter dispute description") ?? "";
+    if (!description.trim()) {
+      setError("Dispute description is required");
+      return;
+    }
+
+    try {
+      setAction("raising-dispute");
+      await disputeService.createDispute({
+        jobId: Number(jobId),
+        attendanceId: attendance.id,
+        reason: reason.trim(),
+        description: description.trim(),
+      });
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError("Failed to create dispute");
       console.error(err);
     } finally {
       setAction(undefined);
@@ -146,6 +269,7 @@ export const WorkerJobDetailsPage = () => {
 
   const hasCheckedIn = attendance?.checkInTime;
   const hasCheckedOut = attendance?.checkOutTime;
+  const attendanceStatus = attendance?.status;
 
   return (
     <div className="space-y-6">
@@ -252,18 +376,26 @@ export const WorkerJobDetailsPage = () => {
       {/* Attendance Status */}
       {application?.status === "SELECTED" && attendance && (
         <div className="rounded-panel bg-purple-50 p-4 shadow-panel">
-          <p className="text-sm font-medium text-purple-900 mb-2">Attendance</p>
-          {hasCheckedIn && (
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-purple-900">Attendance</p>
+            <StatusBadge status={attendanceStatus} />
+          </div>
+          {hasCheckedIn ? (
             <p className="text-sm text-purple-700">
               Check-in: {new Date(attendance.checkInTime).toLocaleTimeString()}
             </p>
-          )}
-          {hasCheckedOut && (
+          ) : null}
+          {hasCheckedOut ? (
             <p className="text-sm text-purple-700">
               Check-out:{" "}
               {new Date(attendance.checkOutTime).toLocaleTimeString()}
             </p>
-          )}
+          ) : null}
+          {attendance?.totalHours ? (
+            <p className="text-sm text-purple-700">
+              Hours worked: {attendance.totalHours}
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -281,7 +413,7 @@ export const WorkerJobDetailsPage = () => {
 
         {application?.status === "APPLIED" && (
           <div className="rounded-panel bg-yellow-50 p-4 text-center">
-            <p className="text-sm text-yellow-900 font-medium">
+            <p className="text-sm font-medium text-yellow-900">
               Application pending
             </p>
           </div>
@@ -289,13 +421,13 @@ export const WorkerJobDetailsPage = () => {
 
         {application?.status === "REJECTED" && (
           <div className="rounded-panel bg-red-50 p-4 text-center">
-            <p className="text-sm text-red-900 font-medium">
+            <p className="text-sm font-medium text-red-900">
               Application rejected
             </p>
           </div>
         )}
 
-        {application?.status === "SELECTED" && !hasCheckedIn && (
+        {application?.status === "SELECTED" && !attendance && (
           <Button
             fullWidth
             onClick={handleCheckIn}
@@ -306,23 +438,43 @@ export const WorkerJobDetailsPage = () => {
           </Button>
         )}
 
-        {application?.status === "SELECTED" &&
-          hasCheckedIn &&
-          !hasCheckedOut && (
+        {attendance?.status === "CHECKED_IN" && (
+          <Button
+            fullWidth
+            onClick={handleCheckOut}
+            loading={action === "checking-out"}
+            className="bg-orange-600 hover:bg-orange-700"
+          >
+            Check Out
+          </Button>
+        )}
+
+        {attendance?.status === "PENDING_REVIEW" && (
+          <Button fullWidth variant="secondary" disabled>
+            Waiting For Review
+          </Button>
+        )}
+
+        {attendance?.status === "APPROVED" && (
+          <Button fullWidth variant="secondary" disabled>
+            Approved
+          </Button>
+        )}
+
+        {attendance?.status === "ISSUE_REPORTED" && (
+          <>
+            <Button fullWidth variant="secondary" disabled>
+              Issue Reported
+            </Button>
             <Button
               fullWidth
-              onClick={handleCheckOut}
-              loading={action === "checking-out"}
-              className="bg-orange-600 hover:bg-orange-700"
+              variant="outline"
+              onClick={handleRaiseDispute}
+              loading={action === "raising-dispute"}
             >
-              Check Out
+              Raise Dispute
             </Button>
-          )}
-
-        {application?.status === "SELECTED" && hasCheckedOut && (
-          <Button fullWidth variant="secondary" disabled>
-            Attendance Complete
-          </Button>
+          </>
         )}
       </div>
     </div>

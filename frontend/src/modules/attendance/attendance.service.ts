@@ -1,13 +1,25 @@
 import { apiClient } from "../../services/apiClient";
 
 export const attendanceService = {
-  async checkIn(jobId: number) {
-    const response = await apiClient.post(`/attendance/${jobId}/check-in`);
+  async checkIn(
+    jobId: number,
+    payload: { latitude: number; longitude: number },
+  ) {
+    const response = await apiClient.post(
+      `/attendance/${jobId}/check-in`,
+      payload,
+    );
     return response.data.data;
   },
 
-  async checkOut(jobId: number) {
-    const response = await apiClient.post(`/attendance/${jobId}/check-out`);
+  async checkOut(
+    jobId: number,
+    payload: { latitude: number; longitude: number },
+  ) {
+    const response = await apiClient.post(
+      `/attendance/${jobId}/check-out`,
+      payload,
+    );
     return response.data.data;
   },
 
@@ -21,16 +33,17 @@ export const attendanceService = {
     return response.data.data;
   },
 
-  async markAttendance(
-    jobId: number,
-    workerId: number,
-    payload: {
-      status: "PRESENT" | "ABSENT" | "LEFT_EARLY" | "COMPLETED";
-      notes?: string;
-    },
-  ) {
+  async approveAttendance(attendanceId: number) {
     const response = await apiClient.patch(
-      `/attendance/job/${jobId}/worker/${workerId}`,
+      `/attendance/${attendanceId}/approve`,
+      {},
+    );
+    return response.data.data;
+  },
+
+  async reportIssue(attendanceId: number, payload: { reason: string }) {
+    const response = await apiClient.patch(
+      `/attendance/${attendanceId}/report-issue`,
       payload,
     );
     return response.data.data;

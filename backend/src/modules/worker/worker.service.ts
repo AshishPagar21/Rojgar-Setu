@@ -36,8 +36,8 @@ export const workerService = {
     });
 
     const attendanceCount = attendanceRecords.length;
-    const attendedCount = attendanceRecords.filter((record) =>
-      ["PRESENT", "COMPLETED"].includes(record.status),
+    const attendedCount = attendanceRecords.filter(
+      (record) => record.status === "APPROVED",
     ).length;
     const attendancePercentage =
       attendanceCount > 0 ? (attendedCount / attendanceCount) * 100 : 100;

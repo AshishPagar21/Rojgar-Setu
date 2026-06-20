@@ -11,9 +11,10 @@ interface StatusBadgeProps {
     | "REJECTED"
     | "PENDING"
     | "DISPUTED"
-    | "PRESENT"
-    | "ABSENT"
-    | "LEFT_EARLY"
+    | "CHECKED_IN"
+    | "PENDING_REVIEW"
+    | "APPROVED"
+    | "ISSUE_REPORTED"
     | "SUCCESS"
     | "FAILED";
   size?: "sm" | "md" | "lg";
@@ -43,12 +44,14 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         return "bg-emerald-100 text-emerald-800";
       case "DISPUTED":
         return "bg-rose-100 text-rose-800";
-      case "PRESENT":
+      case "CHECKED_IN":
+        return "bg-blue-100 text-blue-800";
+      case "PENDING_REVIEW":
+        return "bg-yellow-100 text-yellow-800";
+      case "APPROVED":
         return "bg-emerald-100 text-emerald-800";
-      case "ABSENT":
+      case "ISSUE_REPORTED":
         return "bg-rose-100 text-rose-800";
-      case "LEFT_EARLY":
-        return "bg-amber-100 text-amber-800";
       case "SUCCESS":
         return "bg-green-100 text-green-800";
       case "FAILED":

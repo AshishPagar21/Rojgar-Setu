@@ -1,12 +1,18 @@
+import { createServer } from "http";
+
 import { app } from "./app";
 import { env } from "./config/env";
 import { prisma } from "./config/prisma";
+import { initializeSocketServer } from "./socket/socket.server";
 
 const startServer = async (): Promise<void> => {
   try {
     await prisma.$connect();
 
-    app.listen(env.PORT, () => {
+    const httpServer = createServer(app);
+    initializeSocketServer(httpServer);
+
+    httpServer.listen(env.PORT, () => {
       // eslint-disable-next-line no-console
       console.log(`Server is running on port ${env.PORT}`);
     });

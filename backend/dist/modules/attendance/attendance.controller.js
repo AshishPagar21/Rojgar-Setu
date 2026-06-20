@@ -30,7 +30,11 @@ exports.attendanceController = {
                 return;
             }
             const jobId = parseInt(req.params.jobId, 10);
-            const attendance = await attendance_service_1.attendanceService.checkIn(jobId, worker.id);
+            const { latitude, longitude } = req.body;
+            const attendance = await attendance_service_1.attendanceService.checkIn(jobId, worker.id, {
+                latitude,
+                longitude,
+            });
             (0, response_1.sendSuccess)(res, constants_1.HTTP_STATUS.OK, "Checked in successfully", attendance);
         }
         catch (error) {
@@ -61,7 +65,11 @@ exports.attendanceController = {
                 return;
             }
             const jobId = parseInt(req.params.jobId, 10);
-            const attendance = await attendance_service_1.attendanceService.checkOut(jobId, worker.id);
+            const { latitude, longitude } = req.body;
+            const attendance = await attendance_service_1.attendanceService.checkOut(jobId, worker.id, {
+                latitude,
+                longitude,
+            });
             (0, response_1.sendSuccess)(res, constants_1.HTTP_STATUS.OK, "Checked out successfully", attendance);
         }
         catch (error) {
@@ -129,7 +137,7 @@ exports.attendanceController = {
             next(error);
         }
     },
-    async markAttendance(req, res, next) {
+    async approveAttendance(req, res, next) {
         try {
             const userId = req.user?.userId;
             if (!userId) {
@@ -149,11 +157,38 @@ exports.attendanceController = {
                 });
                 return;
             }
-            const jobId = parseInt(req.params.jobId, 10);
-            const workerId = parseInt(req.params.workerId, 10);
-            const { status, notes } = req.body;
-            const attendance = await attendance_service_1.attendanceService.markAttendanceByEmployer(jobId, employer.id, workerId, status, notes);
-            (0, response_1.sendSuccess)(res, constants_1.HTTP_STATUS.OK, "Attendance updated successfully", attendance);
+            const attendanceId = parseInt(req.params.attendanceId, 10);
+            const attendance = await attendance_service_1.attendanceService.approveAttendance(attendanceId, employer.id);
+            (0, response_1.sendSuccess)(res, constants_1.HTTP_STATUS.OK, "Attendance approved successfully", attendance);
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    async reportIssue(req, res, next) {
+        try {
+            const userId = req.user?.userId;
+            if (!userId) {
+                res.status(constants_1.HTTP_STATUS.UNAUTHORIZED).json({
+                    success: false,
+                    message: "Unauthorized",
+                });
+                return;
+            }
+            const employer = await prisma_1.prisma.employer.findUnique({
+                where: { userId },
+            });
+            if (!employer) {
+                res.status(constants_1.HTTP_STATUS.NOT_FOUND).json({
+                    success: false,
+                    message: "Employer profile not found",
+                });
+                return;
+            }
+            const attendanceId = parseInt(req.params.attendanceId, 10);
+            const { reason } = req.body;
+            const attendance = await attendance_service_1.attendanceService.reportIssue(attendanceId, employer.id, reason);
+            (0, response_1.sendSuccess)(res, constants_1.HTTP_STATUS.OK, "Attendance issue reported successfully", attendance);
         }
         catch (error) {
             next(error);

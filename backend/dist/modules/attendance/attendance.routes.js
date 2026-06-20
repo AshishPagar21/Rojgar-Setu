@@ -14,6 +14,7 @@ router.post("/:jobId/check-out", auth_middleware_1.authenticate, (0, role_middle
 router.get("/my", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("WORKER"), attendance_controller_1.attendanceController.getMyAttendance);
 // Employer routes
 router.get("/job/:jobId", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(attendance_validation_1.getJobAttendanceSchema), attendance_controller_1.attendanceController.getJobAttendance);
-router.patch("/job/:jobId/worker/:workerId", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(attendance_validation_1.markAttendanceSchema), attendance_controller_1.attendanceController.markAttendance);
+router.patch("/:attendanceId/approve", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(attendance_validation_1.approveAttendanceSchema), attendance_controller_1.attendanceController.approveAttendance);
+router.patch("/:attendanceId/report-issue", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(attendance_validation_1.reportIssueSchema), attendance_controller_1.attendanceController.reportIssue);
 exports.attendanceRoutes = router;
 //# sourceMappingURL=attendance.routes.js.map

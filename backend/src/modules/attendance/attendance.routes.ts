@@ -8,7 +8,8 @@ import {
   checkInSchema,
   checkOutSchema,
   getJobAttendanceSchema,
-  markAttendanceSchema,
+  reportIssueSchema,
+  approveAttendanceSchema,
 } from "./attendance.validation";
 
 const router = Router();
@@ -47,11 +48,19 @@ router.get(
 );
 
 router.patch(
-  "/job/:jobId/worker/:workerId",
+  "/:attendanceId/approve",
   authenticate,
   authorizeRoles("EMPLOYER"),
-  validate(markAttendanceSchema),
-  attendanceController.markAttendance,
+  validate(approveAttendanceSchema),
+  attendanceController.approveAttendance,
+);
+
+router.patch(
+  "/:attendanceId/report-issue",
+  authenticate,
+  authorizeRoles("EMPLOYER"),
+  validate(reportIssueSchema),
+  attendanceController.reportIssue,
 );
 
 export const attendanceRoutes = router;
