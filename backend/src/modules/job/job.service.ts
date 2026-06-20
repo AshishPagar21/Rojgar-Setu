@@ -197,6 +197,7 @@ export const jobService = {
         employer: {
           select: {
             id: true,
+            userId: true,
             name: true,
             rating: true,
           },
