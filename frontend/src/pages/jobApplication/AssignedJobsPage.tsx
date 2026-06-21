@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
@@ -15,6 +16,7 @@ const getAttendanceForJob = (attendanceRecords: any[], jobId: number) =>
   attendanceRecords.find((record) => record.jobId === jobId);
 
 export const AssignedJobsPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
@@ -39,7 +41,7 @@ export const AssignedJobsPage = () => {
         setLoading(true);
         await loadData();
       } catch (err) {
-        setError("Failed to load jobs");
+        setError(t("jobs.failedToLoad"));
         console.error(err);
       } finally {
         setLoading(false);
@@ -47,7 +49,7 @@ export const AssignedJobsPage = () => {
     };
 
     fetchJobs();
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const refreshForWorkerEvents = async (payload: any) => {
@@ -86,7 +88,9 @@ export const AssignedJobsPage = () => {
       await attendanceService.checkIn(jobId, location);
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to check in");
+      setError(
+        err instanceof Error ? err.message : t("jobDetails.failedToCheckIn"),
+      );
       console.error(err);
     } finally {
       setAction(undefined);
@@ -100,7 +104,9 @@ export const AssignedJobsPage = () => {
       await attendanceService.checkOut(jobId, location);
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to check out");
+      setError(
+        err instanceof Error ? err.message : t("jobDetails.failedToCheckOut"),
+      );
       console.error(err);
     } finally {
       setAction(undefined);
@@ -108,15 +114,16 @@ export const AssignedJobsPage = () => {
   };
 
   const handleRaiseDispute = async (job: any, attendance: any) => {
-    const reason = window.prompt("Enter dispute reason");
+    const reason = window.prompt(t("jobDetails.enterDisputeReason"));
     if (!reason?.trim()) {
       return;
     }
 
-    const description = window.prompt("Enter dispute description") ?? "";
+    const description =
+      window.prompt(t("jobDetails.enterDisputeDescription")) ?? "";
 
     if (!description.trim()) {
-      setError("Dispute description is required");
+      setError(t("jobDetails.disputeDescRequired"));
       return;
     }
 
@@ -129,7 +136,7 @@ export const AssignedJobsPage = () => {
         description: description.trim(),
       });
     } catch (err) {
-      setError("Failed to create dispute");
+      setError(t("jobDetails.failedToCreateDispute"));
       console.error(err);
     } finally {
       setAction(undefined);
@@ -139,7 +146,7 @@ export const AssignedJobsPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-600">Loading...</p>
+        <p className="text-slate-600">{t("common.loading")}</p>
       </div>
     );
   }
@@ -147,8 +154,8 @@ export const AssignedJobsPage = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Assigned Jobs"
-        subtitle="Jobs you've been selected for"
+        title={t("jobs.assignedJobsTitle")}
+        subtitle={t("jobs.assignedJobsSubtitle")}
       />
 
       {error && (
@@ -159,13 +166,13 @@ export const AssignedJobsPage = () => {
 
       {jobs.length === 0 ? (
         <div className="rounded-panel bg-white p-8 text-center shadow-panel">
-          <p className="text-slate-600">No assigned jobs yet</p>
+          <p className="text-slate-600">{t("jobs.noAssignedJobsYet")}</p>
           <Button
             onClick={() => navigate("/jobs/open")}
             variant="secondary"
             className="mt-4"
           >
-            Find Work
+            {t("common.findWork")}
           </Button>
         </div>
       ) : (
@@ -202,18 +209,20 @@ export const AssignedJobsPage = () => {
                       <StatusBadge status={status} />
                       {attendance?.checkInTime ? (
                         <span className="text-xs text-slate-500">
-                          Check in:{" "}
-                          {new Date(
-                            attendance.checkInTime,
-                          ).toLocaleTimeString()}
+                          {t("jobDetails.checkIn", {
+                            time: new Date(
+                              attendance.checkInTime,
+                            ).toLocaleTimeString(),
+                          })}
                         </span>
                       ) : null}
                       {attendance?.checkOutTime ? (
                         <span className="text-xs text-slate-500">
-                          Check out:{" "}
-                          {new Date(
-                            attendance.checkOutTime,
-                          ).toLocaleTimeString()}
+                          {t("jobDetails.checkOut", {
+                            time: new Date(
+                              attendance.checkOutTime,
+                            ).toLocaleTimeString(),
+                          })}
                         </span>
                       ) : null}
                     </div>
@@ -227,7 +236,7 @@ export const AssignedJobsPage = () => {
                       loading={action === `check-in-${job.jobId}`}
                       className="bg-green-600 hover:bg-green-700"
                     >
-                      Check In
+                      {t("jobDetails.checkInBtn")}
                     </Button>
                   ) : null}
 
@@ -237,19 +246,19 @@ export const AssignedJobsPage = () => {
                       loading={action === `check-out-${job.jobId}`}
                       className="bg-orange-600 hover:bg-orange-700"
                     >
-                      Check Out
+                      {t("jobDetails.checkOutBtn")}
                     </Button>
                   ) : null}
 
                   {attendance?.status === "PENDING_REVIEW" ? (
                     <Button variant="secondary" disabled>
-                      Waiting For Review
+                      {t("jobDetails.waitingForReview")}
                     </Button>
                   ) : null}
 
                   {attendance?.status === "APPROVED" ? (
                     <Button variant="secondary" disabled>
-                      Approved
+                      {t("jobDetails.approved")}
                     </Button>
                   ) : null}
 
@@ -259,7 +268,7 @@ export const AssignedJobsPage = () => {
                       onClick={() => handleRaiseDispute(job, attendance)}
                       loading={action === `dispute-${job.id}`}
                     >
-                      Raise Dispute
+                      {t("jobDetails.raiseDispute")}
                     </Button>
                   ) : null}
                 </div>

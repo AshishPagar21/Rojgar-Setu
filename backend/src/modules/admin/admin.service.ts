@@ -90,6 +90,34 @@ export const adminService = {
       include: {
         job: true,
         raisedBy: true,
+        attendance: {
+          include: {
+            worker: {
+              include: {
+                user: true,
+              },
+            },
+            job: {
+              include: {
+                employer: {
+                  include: {
+                    user: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        worker: {
+          include: {
+            user: true,
+          },
+        },
+        employer: {
+          include: {
+            user: true,
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -110,17 +138,41 @@ export const adminService = {
   },
 
   async resolveDispute(disputeId: number, status: "RESOLVED" | "REJECTED") {
-    const dispute = await prisma.dispute.findUnique({
-      where: { id: disputeId },
-    });
+    return prisma.$transaction(async (tx) => {
+      const dispute = await tx.dispute.findUnique({
+        where: { id: disputeId },
+        include: {
+          attendance: true,
+        },
+      });
 
-    if (!dispute) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Dispute not found");
-    }
+      if (!dispute) {
+        throw new ApiError(HTTP_STATUS.NOT_FOUND, "Dispute not found");
+      }
 
-    return prisma.dispute.update({
-      where: { id: disputeId },
-      data: { status },
+      const updatedDispute = await tx.dispute.update({
+        where: { id: disputeId },
+        data: { status },
+      });
+
+      const workerId = dispute.workerId || dispute.attendance?.workerId;
+      const jobId = dispute.jobId || dispute.attendance?.jobId;
+
+      if (workerId && jobId) {
+        if (status === "RESOLVED") {
+          await tx.payment.updateMany({
+            where: { jobId, workerId },
+            data: { status: "COMPLETED", paidAt: new Date() },
+          });
+        } else if (status === "REJECTED") {
+          await tx.payment.updateMany({
+            where: { jobId, workerId },
+            data: { status: "DISPUTED" },
+          });
+        }
+      }
+
+      return updatedDispute;
     });
   },
 };

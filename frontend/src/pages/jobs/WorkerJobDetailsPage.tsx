@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 
 import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
+import { RatingForm } from "../../components/common/RatingForm";
 import { useAuth } from "../../hooks/useAuth";
 import { disputeService } from "../../modules/dispute/dispute.service";
 import { jobService } from "../../modules/job/job.service";
 import { jobApplicationService } from "../../modules/jobApplication/jobApplication.service";
 import { attendanceService } from "../../modules/attendance/attendance.service";
-import { paymentService } from "../../modules/payment/payment.service"; // 👈 IMPORT YOUR NEW SERVICE
+import { paymentService } from "../../modules/payment/payment.service";
+import { ratingService } from "../../modules/rating/rating.service";
 import { socketService } from "../../services/socket.service";
 import { getErrorMessage } from "../../utils/helpers";
 import { getCurrentLocation } from "../../utils/geolocation";
@@ -24,14 +27,10 @@ const extractLocation = (description?: string | null) => {
 const cleanDescription = (description?: string | null) =>
   (description ?? "").replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
 
-const getSelectedWorkers = (job: any) =>
-  (job?.jobApplications ?? []).filter(
-    (application: any) => application.status === "SELECTED",
-  );
-
 export const WorkerJobDetailsPage = () => {
+  const { t } = useTranslation();
   const { jobId } = useParams<{ jobId: string }>();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [job, setJob] = useState<any>(null);
   const [application, setApplication] = useState<any>(null);
   const [attendance, setAttendance] = useState<any>(null);
@@ -39,58 +38,66 @@ export const WorkerJobDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [action, setAction] = useState<string>();
+  const [ratings, setRatings] = useState<any[]>([]);
+
+  const fetchData = async () => {
+    if (!jobId) return;
+    try {
+      setLoading(true);
+      const jobData = await jobService.getJobById(Number(jobId));
+      setJob(jobData);
+
+      try {
+        const ratingsData = await ratingService.getJobRatings(Number(jobId));
+        setRatings(ratingsData || []);
+      } catch (err) {
+        console.error("Failed to load ratings", err);
+      }
+
+      try {
+        const apps = await jobApplicationService.getMyApplications();
+        const userApp = apps.find((a: any) => a.jobId === Number(jobId));
+        setApplication(userApp);
+
+        if (userApp?.status === "SELECTED" || userApp?.status === "COMPLETED") {
+          // Fetch Attendance Status
+          try {
+            const attendanceHistory =
+              await attendanceService.getMyAttendance();
+            const jobAttendance = attendanceHistory.find(
+              (record: any) => record.jobId === Number(jobId),
+            );
+            setAttendance(jobAttendance ?? null);
+          } catch {
+            // No attendance yet
+          }
+
+          // 👇 FETCH PAYMENT CLEANLY USING SERVICE LAYER
+          // Inside WorkerJobDetailsPage.tsx:
+          try {
+            const paymentData = await paymentService.getJobPayments(
+              Number(jobId),
+            );
+            // paymentData is now the raw array directly!
+            if (paymentData && paymentData.length > 0) {
+              setPayment(paymentData[0]);
+            }
+          } catch (err) {
+            console.error("Payment info not available yet", err);
+          }
+        }
+      } catch {
+        // Not applied yet
+      }
+    } catch (err) {
+      setError(getErrorMessage(err));
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!jobId) return;
-      try {
-        setLoading(true);
-        const jobData = await jobService.getJobById(Number(jobId));
-        setJob(jobData);
-
-        try {
-          const apps = await jobApplicationService.getMyApplications();
-          const userApp = apps.find((a: any) => a.jobId === Number(jobId));
-          setApplication(userApp);
-
-          if (userApp?.status === "SELECTED") {
-            // Fetch Attendance Status
-            try {
-              const attendanceHistory =
-                await attendanceService.getMyAttendance();
-              const jobAttendance = attendanceHistory.find(
-                (record: any) => record.jobId === Number(jobId),
-              );
-              setAttendance(jobAttendance ?? null);
-            } catch {
-              // No attendance yet
-            }
-
-            // 👇 FETCH PAYMENT CLEANLY USING SERVICE LAYER
-            // Inside WorkerJobDetailsPage.tsx:
-            try {
-              const paymentData = await paymentService.getJobPayments(
-                Number(jobId),
-              );
-              // paymentData is now the raw array directly!
-              if (paymentData && paymentData.length > 0) {
-                setPayment(paymentData[0]);
-              }
-            } catch (err) {
-              console.error("Payment info not available yet", err);
-            }
-          }
-        } catch {
-          // Not applied yet
-        }
-      } catch (err) {
-        setError(getErrorMessage(err));
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [jobId]);
 
@@ -160,14 +167,14 @@ export const WorkerJobDetailsPage = () => {
         latitude: location.latitude,
         longitude: location.longitude,
       });
-      toast.success("Check-in successful");
+      toast.success(t("jobDetails.checkInSuccess"));
       await refreshAttendance();
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Failed to mark attendance";
       if (message.includes("200 meters")) {
         toast.error(
-          "You are not at the work location. Move within 200 meters and try again.",
+          t("jobDetails.notAtWorkLocationError"),
         );
       } else {
         toast.error(message);
@@ -186,12 +193,12 @@ export const WorkerJobDetailsPage = () => {
         latitude: location.latitude,
         longitude: location.longitude,
       });
-      toast.success("Check-out successful. Waiting for employer review.");
+      toast.success(t("jobDetails.checkOutSuccess"));
       await refreshAttendance();
     } catch (error: any) {
       const message = error?.response?.data?.message || "Failed to check out";
       if (message.includes("200 meters")) {
-        toast.error("You must be at the work location to check out.");
+        toast.error(t("jobDetails.mustBeAtWorkLocationError"));
       } else {
         toast.error(message);
       }
@@ -211,7 +218,7 @@ export const WorkerJobDetailsPage = () => {
         payment.id,
       );
 
-      toast.success("Payment receipt confirmed successfully!");
+      toast.success(t("jobDetails.paymentConfirmedSuccess"));
 
       // 👇 Use the absolute truth directly from the database response
       setPayment(updatedPayment);
@@ -226,12 +233,12 @@ export const WorkerJobDetailsPage = () => {
   const handleRaiseDispute = async () => {
     if (!jobId || !attendance) return;
 
-    const reason = window.prompt("Enter dispute reason");
+    const reason = window.prompt(t("jobDetails.enterDisputeReason"));
     if (!reason?.trim()) return;
 
-    const description = window.prompt("Enter dispute description") ?? "";
+    const description = window.prompt(t("jobDetails.enterDisputeDescription")) ?? "";
     if (!description.trim()) {
-      setError("Dispute description is required");
+      setError(t("jobDetails.disputeDescRequired"));
       return;
     }
 
@@ -243,9 +250,9 @@ export const WorkerJobDetailsPage = () => {
         reason: reason.trim(),
         description: description.trim(),
       });
-      toast.success("Dispute raised successfully");
+      toast.success(t("jobDetails.disputeRaisedSuccess"));
     } catch (err) {
-      setError("Failed to create dispute");
+      setError(t("jobDetails.failedToCreateDispute"));
       console.error(err);
     } finally {
       setAction(undefined);
@@ -255,7 +262,7 @@ export const WorkerJobDetailsPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-600">Loading...</p>
+        <p className="text-slate-600">{t("common.loading")}</p>
       </div>
     );
   }
@@ -263,7 +270,7 @@ export const WorkerJobDetailsPage = () => {
   if (!job) {
     return (
       <div className="rounded-panel bg-white p-5 text-center shadow-panel">
-        <p className="text-slate-600">Job not found</p>
+        <p className="text-slate-600">{t("jobDetails.jobNotFound")}</p>
       </div>
     );
   }
@@ -274,7 +281,7 @@ export const WorkerJobDetailsPage = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={job.title} subtitle={job.category} />
+      <PageHeader title={job.title} subtitle={t(`jobs.categories.${job.category}`, job.category) as string} />
 
       {error && (
         <div className="rounded bg-red-50 p-3 text-sm text-red-600">
@@ -286,11 +293,11 @@ export const WorkerJobDetailsPage = () => {
       <div className="rounded-panel bg-white p-5 shadow-panel">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-sm text-slate-600">Job Status</p>
+            <p className="text-sm text-slate-600">{t("jobDetails.jobStatus")}</p>
             <StatusBadge status={job.status} />
           </div>
           <div className="text-right">
-            <p className="text-sm text-slate-600">Wage</p>
+            <p className="text-sm text-slate-600">{t("jobDetails.wage")}</p>
             <p className="text-2xl font-bold text-slate-900">₹{job.wage}</p>
           </div>
         </div>
@@ -299,11 +306,11 @@ export const WorkerJobDetailsPage = () => {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-xs text-slate-600">Job Date</p>
+            <p className="text-xs text-slate-600">{t("jobDetails.jobDate")}</p>
             <p className="text-sm font-medium text-slate-900">{job.jobDate}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-600">Required Workers</p>
+            <p className="text-xs text-slate-600">{t("jobDetails.requiredWorkers")}</p>
             <p className="text-sm font-medium text-slate-900">
               {job.requiredWorkers}
             </p>
@@ -313,7 +320,7 @@ export const WorkerJobDetailsPage = () => {
         <hr className="my-4" />
 
         <div>
-          <p className="text-sm font-medium text-slate-900">Description</p>
+          <p className="text-sm font-medium text-slate-900">{t("jobDetails.description")}</p>
           <p className="mt-2 text-sm text-slate-700">
             {cleanDescription(job.description)}
           </p>
@@ -323,7 +330,7 @@ export const WorkerJobDetailsPage = () => {
           <>
             <hr className="my-4" />
             <div>
-              <p className="text-sm font-medium text-slate-900">Location</p>
+              <p className="text-sm font-medium text-slate-900">{t("jobDetails.location")}</p>
               <p className="mt-2 text-sm text-slate-700">
                 {extractLocation(job.description)}
               </p>
@@ -336,7 +343,7 @@ export const WorkerJobDetailsPage = () => {
       {application && (
         <div className="rounded-panel bg-blue-50 p-4 shadow-panel">
           <p className="text-sm font-medium text-blue-900 mb-1">
-            Application Status
+            {t("jobDetails.applicationStatus", "Application Status")}
           </p>
           <StatusBadge status={application.status} />
         </div>
@@ -346,23 +353,22 @@ export const WorkerJobDetailsPage = () => {
       {application?.status === "SELECTED" && attendance && (
         <div className="rounded-panel bg-purple-50 p-4 shadow-panel">
           <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-sm font-medium text-purple-900">Attendance</p>
+            <p className="text-sm font-medium text-purple-900">{t("attendance.status")}</p>
             <StatusBadge status={attendanceStatus} />
           </div>
           {hasCheckedIn && (
             <p className="text-sm text-purple-700">
-              Check-in: {new Date(attendance.checkInTime).toLocaleTimeString()}
+              {t("jobDetails.checkIn", { time: new Date(attendance.checkInTime).toLocaleTimeString() })}
             </p>
           )}
           {hasCheckedOut && (
             <p className="text-sm text-purple-700">
-              Check-out:{" "}
-              {new Date(attendance.checkOutTime).toLocaleTimeString()}
+              {t("jobDetails.checkOut", { time: new Date(attendance.checkOutTime).toLocaleTimeString() })}
             </p>
           )}
           {attendance?.totalHours && (
             <p className="text-sm text-purple-700">
-              Hours worked: {attendance.totalHours}
+              {t("jobDetails.hoursWorked", { hours: attendance.totalHours })}
             </p>
           )}
         </div>
@@ -376,14 +382,14 @@ export const WorkerJobDetailsPage = () => {
             onClick={handleApply}
             loading={action === "applying"}
           >
-            Apply for Job
+            {t("jobDetails.applyForJob")}
           </Button>
         )}
 
         {application?.status === "APPLIED" && (
           <div className="rounded-panel bg-yellow-50 p-4 text-center">
             <p className="text-sm font-medium text-yellow-900">
-              Application pending
+              {t("jobDetails.applicationPending")}
             </p>
           </div>
         )}
@@ -391,7 +397,7 @@ export const WorkerJobDetailsPage = () => {
         {application?.status === "REJECTED" && (
           <div className="rounded-panel bg-red-50 p-4 text-center">
             <p className="text-sm font-medium text-red-900">
-              Application rejected
+              {t("jobDetails.applicationRejected")}
             </p>
           </div>
         )}
@@ -403,7 +409,7 @@ export const WorkerJobDetailsPage = () => {
             loading={action === "checking-in"}
             className="bg-green-600 hover:bg-green-700"
           >
-            Check In
+            {t("jobDetails.checkInBtn")}
           </Button>
         )}
 
@@ -414,36 +420,67 @@ export const WorkerJobDetailsPage = () => {
             loading={action === "checking-out"}
             className="bg-orange-600 hover:bg-orange-700"
           >
-            Check Out
+            {t("jobDetails.checkOutBtn")}
           </Button>
         )}
 
         {attendance?.status === "PENDING_REVIEW" && (
           <Button fullWidth variant="secondary" disabled>
-            Waiting For Employer Review
+            {t("jobDetails.waitingForEmployerReview")}
           </Button>
         )}
-
         {/* 👇 CLEAN PAYMENTS VIEW UI PANEL */}
         {attendance?.status === "APPROVED" && (
           <div className="space-y-3 rounded-panel bg-green-50 p-4 border border-green-200 shadow-sm">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-green-900">
-                Work Approved 🎉
+                {t("jobDetails.workApproved")}
               </p>
               {/* Fallback to dynamic status tracking from backend payment row */}
               <StatusBadge status={payment?.status ?? "PENDING"} />
             </div>
             <p className="text-xs text-green-700">
-              Your attendance was approved. Pay out wage structure:{" "}
-              <strong>₹{job.wage}</strong>
+              {t("jobDetails.approvedText", { wage: `₹${job.wage}` })}
             </p>
 
             {/* 👇 Check both possible flags depending on your database schema sync */}
             {payment?.status === "COMPLETED" || payment?.workerConfirmed ? (
-              <div className="text-center py-2 text-sm font-semibold text-green-800 bg-green-100 rounded-lg">
-                ✓ Payment Received Confirmed
-              </div>
+              <>
+                <div className="text-center py-2 text-sm font-semibold text-green-800 bg-green-100 rounded-lg">
+                  {t("jobDetails.paymentReceivedConfirmed")}
+                </div>
+                {job.status === "COMPLETED" && (
+                  <div className="mt-4 border-t border-green-200 pt-4 space-y-4">
+                    <p className="text-sm font-semibold text-slate-800">{t("jobDetails.employerFeedback")}</p>
+                    {(() => {
+                      const existingRating = ratings.find(
+                        (r) =>
+                          r.fromUserId === user?.id &&
+                          r.toUserId === job.employer.userId,
+                      );
+                      if (existingRating) {
+                        return (
+                          <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3 flex items-center justify-between text-xs text-emerald-800">
+                            <span>{t("jobDetails.youRatedEmployer", { value: existingRating.ratingValue })}</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 shadow-inner">
+                          <p className="text-xs text-slate-500 mb-3 font-medium">
+                            {t("jobDetails.rateExperienceWith", { name: job.employer.name })}
+                          </p>
+                          <RatingForm
+                            jobId={Number(jobId)}
+                            toUserId={job.employer.userId}
+                            onSuccess={fetchData}
+                          />
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </>
             ) : (
               <Button
                 fullWidth
@@ -451,7 +488,7 @@ export const WorkerJobDetailsPage = () => {
                 onClick={handleConfirmPaymentReceived}
                 loading={action === "confirming-payment"}
               >
-                Mark Payment as Received
+                {t("jobDetails.markPaymentReceived")}
               </Button>
             )}
           </div>
@@ -460,7 +497,7 @@ export const WorkerJobDetailsPage = () => {
         {attendance?.status === "ISSUE_REPORTED" && (
           <>
             <Button fullWidth variant="secondary" disabled>
-              Issue Reported
+              {t("jobDetails.issueReported")}
             </Button>
             <Button
               fullWidth
@@ -468,7 +505,7 @@ export const WorkerJobDetailsPage = () => {
               onClick={handleRaiseDispute}
               loading={action === "raising-dispute"}
             >
-              Raise Dispute
+              {t("jobDetails.raiseDispute")}
             </Button>
           </>
         )}

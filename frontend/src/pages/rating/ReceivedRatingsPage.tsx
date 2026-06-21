@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "../../components/common/PageHeader";
 import { ratingService } from "../../modules/rating/rating.service";
 
 export const ReceivedRatingsPage = () => {
+  const { t } = useTranslation();
   const [ratings, setRatings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -15,7 +17,7 @@ export const ReceivedRatingsPage = () => {
         const data = await ratingService.getReceivedRatings();
         setRatings(data);
       } catch (err) {
-        setError("Failed to load ratings");
+        setError(t("rating.failedToLoad"));
         console.error(err);
       } finally {
         setLoading(false);
@@ -23,12 +25,12 @@ export const ReceivedRatingsPage = () => {
     };
 
     fetchRatings();
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-600">Loading...</p>
+        <p className="text-slate-600">{t("common.loading")}</p>
       </div>
     );
   }
@@ -46,7 +48,7 @@ export const ReceivedRatingsPage = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Received Ratings" subtitle="How others rate you" />
+      <PageHeader title={t("rating.receivedTitle")} subtitle={t("rating.receivedSubtitle")} />
 
       {error && (
         <div className="rounded bg-red-50 p-3 text-sm text-red-600">
@@ -62,7 +64,7 @@ export const ReceivedRatingsPage = () => {
             {renderStars(Math.round(Number(averageRating)))}
           </p>
           <p className="text-xs text-yellow-700 mt-2">
-            Based on {ratings.length} rating(s)
+            {t("rating.basedOnRatings", { count: ratings.length })}
           </p>
         </div>
       )}
@@ -70,7 +72,7 @@ export const ReceivedRatingsPage = () => {
       {/* Ratings List */}
       {ratings.length === 0 ? (
         <div className="rounded-panel bg-white p-8 text-center shadow-panel">
-          <p className="text-slate-600">No ratings yet</p>
+          <p className="text-slate-600">{t("rating.noRatings")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -83,8 +85,8 @@ export const ReceivedRatingsPage = () => {
                 <div className="flex-1">
                   <p className="font-medium text-slate-900">
                     {rating.fromUser.role === "EMPLOYER"
-                      ? "Employer"
-                      : "Worker"}
+                      ? t("rating.employer")
+                      : t("rating.worker")}
                   </p>
                   <p className="text-xs text-slate-600">{rating.job?.title}</p>
                 </div>

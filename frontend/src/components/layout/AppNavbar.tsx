@@ -10,6 +10,7 @@ import {
   type NotificationSocketPayload,
 } from "../../services/socket.service";
 import { LanguageSwitcher } from "../common/LanguageSwitcher";
+import { getLocalizedNotification } from "../../utils/notificationUtils";
 
 const roleLabel: Record<string, string> = {
   ADMIN: "Admin",
@@ -185,46 +186,49 @@ export const AppNavbar = () => {
               <div className="absolute right-0 mt-3 w-80 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
                 <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-4">
                   <p className="text-sm font-semibold text-slate-900">
-                    Notifications
+                    {t("notifications.title")}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Latest updates from jobs and payments
+                    {t("notifications.latestUpdates")}
                   </p>
                 </div>
                 <div className="max-h-96 overflow-auto p-2">
                   {notifications.length === 0 ? (
                     <p className="rounded-2xl bg-slate-50 px-3 py-4 text-sm text-slate-500">
-                      No notifications yet
+                      {t("notifications.noNotifications")}
                     </p>
                   ) : (
-                    notifications.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={async () => {
-                          await notificationService.markAsRead(item.id);
-                          setUnreadCount((prev) => Math.max(prev - 1, 0));
-                          setNotifications((prev) =>
-                            prev.map((notification) =>
-                              notification.id === item.id
-                                ? { ...notification, isRead: true }
-                                : notification,
-                            ),
-                          );
-                        }}
-                        className="block w-full rounded-2xl px-3 py-3 text-left transition hover:bg-slate-50"
-                      >
-                        <p className="text-sm font-semibold text-slate-900">
-                          {item.title}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500 line-clamp-2">
-                          {item.message}
-                        </p>
-                        <p className="mt-2 text-[11px] text-slate-400">
-                          {new Date(item.createdAt).toLocaleString()}
-                        </p>
-                      </button>
-                    ))
+                    notifications.map((item) => {
+                      const localized = getLocalizedNotification(item, t);
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={async () => {
+                            await notificationService.markAsRead(item.id);
+                            setUnreadCount((prev) => Math.max(prev - 1, 0));
+                            setNotifications((prev) =>
+                              prev.map((notification) =>
+                                notification.id === item.id
+                                  ? { ...notification, isRead: true }
+                                  : notification,
+                              ),
+                            );
+                          }}
+                          className="block w-full rounded-2xl px-3 py-3 text-left transition hover:bg-slate-50"
+                        >
+                          <p className="text-sm font-semibold text-slate-900">
+                            {localized.title}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500 line-clamp-2">
+                            {localized.message}
+                          </p>
+                          <p className="mt-2 text-[11px] text-slate-400">
+                            {new Date(item.createdAt).toLocaleString()}
+                          </p>
+                        </button>
+                      );
+                    })
                   )}
                 </div>
                 <div className="border-t border-slate-100 p-2">
@@ -236,7 +240,7 @@ export const AppNavbar = () => {
                     }}
                     className="w-full rounded-2xl px-3 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
                   >
-                    View all notifications
+                    {t("notifications.viewAll")}
                   </button>
                 </div>
               </div>

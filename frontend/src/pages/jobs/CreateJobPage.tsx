@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { Button } from "../../components/common/Button";
@@ -45,6 +46,7 @@ const schema = z
 type FormValues = z.infer<typeof schema>;
 
 export const CreateJobPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -83,15 +85,15 @@ export const CreateJobPage = () => {
   const landmark = watch("landmark");
 
   const categories = [
-    { label: "Construction", value: "Construction" },
-    { label: "Repairs", value: "Repairs" },
-    { label: "Cleaning", value: "Cleaning" },
-    { label: "Plumbing", value: "Plumbing" },
-    { label: "Electrical", value: "Electrical" },
-    { label: "Carpentry", value: "Carpentry" },
-    { label: "Painting", value: "Painting" },
-    { label: "Masonry", value: "Masonry" },
-    { label: "Other", value: "Other" },
+    { label: t("jobs.categories.Construction"), value: "Construction" },
+    { label: t("jobs.categories.Repairs"), value: "Repairs" },
+    { label: t("jobs.categories.Cleaning"), value: "Cleaning" },
+    { label: t("jobs.categories.Plumbing"), value: "Plumbing" },
+    { label: t("jobs.categories.Electrical"), value: "Electrical" },
+    { label: t("jobs.categories.Carpentry"), value: "Carpentry" },
+    { label: t("jobs.categories.Painting"), value: "Painting" },
+    { label: t("jobs.categories.Masonry"), value: "Masonry" },
+    { label: t("jobs.categories.Other"), value: "Other" },
   ];
 
   const handleLocationChange = (lat: number, lon: number) => {
@@ -152,13 +154,12 @@ export const CreateJobPage = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Create New Job"
-        subtitle="Post a job with accurate location details"
+        title={t("jobs.createNewJob")}
+        subtitle={t("jobs.postJobWithLocation")}
       />
 
       <div className="rounded bg-brand-50 p-3 text-sm text-brand-700">
-        📍 Set your job location on the map. Workers within 10km radius will see
-        your job posting.
+        {t("jobs.setJobLocationMap")}
       </div>
 
       {error && (
@@ -169,19 +170,19 @@ export const CreateJobPage = () => {
 
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <Input
-          label="Job Title"
-          placeholder="e.g., House Painting"
+          label={t("jobs.jobTitle")}
+          placeholder={t("jobs.jobTitlePlaceholder")}
           error={errors.title?.message}
           {...register("title")}
         />
 
         <label className="block w-full">
           <span className="mb-1 block text-sm font-medium text-slate-700">
-            Description
+            {t("jobs.description")}
           </span>
           <textarea
             className="h-24 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-base outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-100"
-            placeholder="Describe the job in detail..."
+            placeholder={t("jobs.descriptionPlaceholder")}
             {...register("description")}
           />
           {errors.description && (
@@ -192,66 +193,66 @@ export const CreateJobPage = () => {
         </label>
 
         <Select
-          label="Category"
+          label={t("jobs.category")}
           options={categories}
           error={errors.category?.message}
           {...register("category")}
         />
 
         <Input
-          label="Wage (₹)"
+          label={t("jobs.wage")}
           type="number"
-          placeholder="e.g., 500"
+          placeholder={t("jobs.wagePlaceholder")}
           error={errors.wage?.message}
           {...register("wage", { valueAsNumber: true })}
         />
 
         <Input
-          label="Job Date"
+          label={t("jobs.jobDate")}
           type="date"
           error={errors.jobDate?.message}
           {...register("jobDate")}
         />
 
         <Input
-          label="Expected Start Time"
+          label={t("jobs.expectedStartTime")}
           type="time"
           error={errors.expectedStartTime?.message}
           {...register("expectedStartTime")}
         />
 
         <Input
-          label="Expected End Time"
+          label={t("jobs.expectedEndTime")}
           type="time"
           error={errors.expectedEndTime?.message}
           {...register("expectedEndTime")}
         />
 
         <Input
-          label="Required Workers"
+          label={t("jobs.requiredWorkers")}
           type="number"
-          placeholder="e.g., 3"
+          placeholder={t("jobs.requiredWorkersPlaceholder")}
           error={errors.requiredWorkers?.message}
           {...register("requiredWorkers")}
         />
 
         <Input
-          label="Street / Area (First Part)"
-          placeholder="e.g., Hingane Home Colony Road, Mavale vasti"
+          label={t("jobs.streetArea")}
+          placeholder={t("jobs.streetAreaPlaceholder")}
           error={errors.locationLine1?.message}
           {...register("locationLine1")}
         />
 
         <Input
-          label="City"
-          placeholder="e.g., Nagpur"
+          label={t("jobs.city")}
+          placeholder={t("jobs.cityPlaceholder")}
           error={errors.city?.message}
           {...register("city")}
         />
 
         <Input
-          label="Landmark / Area"
-          placeholder="e.g., Near Bus Stand"
+          label={t("jobs.landmark")}
+          placeholder={t("jobs.landmarkPlaceholder")}
           error={errors.landmark?.message}
           {...register("landmark")}
         />
@@ -277,10 +278,10 @@ export const CreateJobPage = () => {
             fullWidth
             onClick={() => navigate("/jobs/my")}
           >
-            Cancel
+            {t("jobs.cancel")}
           </Button>
           <Button type="submit" fullWidth loading={loading}>
-            Create Job
+            {t("jobs.createJobBtn")}
           </Button>
         </div>
       </form>

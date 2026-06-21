@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { JobCard } from "../../components/common/JobCard";
 import { PageHeader } from "../../components/common/PageHeader";
@@ -39,6 +40,7 @@ const calculateDistance = (
 };
 
 export const BrowseJobsPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export const BrowseJobsPage = () => {
         setWorkerLocation(location);
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Could not access location";
+          err instanceof Error ? err.message : t("jobs.locationErrorMsg");
         setLocationError(message);
         console.log("Location access denied, showing all jobs");
       }
@@ -100,7 +102,7 @@ export const BrowseJobsPage = () => {
 
         setJobs(jobsWithDistance);
       } catch (err) {
-        setError("Failed to load jobs");
+        setError(t("jobs.failedToLoad"));
         console.error(err);
       } finally {
         setLoading(false);
@@ -108,41 +110,41 @@ export const BrowseJobsPage = () => {
     };
 
     fetchJobs();
-  }, [category, workerLocation, radius]);
+  }, [category, workerLocation, radius, t]);
 
   const categories = [
-    { label: "All Categories", value: "" },
-    { label: "Construction", value: "Construction" },
-    { label: "Repairs", value: "Repairs" },
-    { label: "Cleaning", value: "Cleaning" },
-    { label: "Plumbing", value: "Plumbing" },
-    { label: "Electrical", value: "Electrical" },
-    { label: "Carpentry", value: "Carpentry" },
-    { label: "Painting", value: "Painting" },
-    { label: "Masonry", value: "Masonry" },
+    { label: t("jobs.categories.All"), value: "" },
+    { label: t("jobs.categories.Construction"), value: "Construction" },
+    { label: t("jobs.categories.Repairs"), value: "Repairs" },
+    { label: t("jobs.categories.Cleaning"), value: "Cleaning" },
+    { label: t("jobs.categories.Plumbing"), value: "Plumbing" },
+    { label: t("jobs.categories.Electrical"), value: "Electrical" },
+    { label: t("jobs.categories.Carpentry"), value: "Carpentry" },
+    { label: t("jobs.categories.Painting"), value: "Painting" },
+    { label: t("jobs.categories.Masonry"), value: "Masonry" },
   ];
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-600">Loading...</p>
+        <p className="text-slate-600">{t("common.loading")}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Find Work" subtitle="Browse available jobs" />
+      <PageHeader title={t("jobs.findWorkTitle")} subtitle={t("jobs.findWorkSubtitle")} />
 
       {workerLocation && (
         <div className="rounded bg-blue-50 p-3 text-sm text-blue-700">
-          📍 Showing jobs within {radius}km of your location.
+          📍 {t("jobs.showingJobsWithin", { radius })}
         </div>
       )}
 
       {locationError && (
         <div className="rounded bg-yellow-50 p-3 text-sm text-yellow-700">
-          ⚠️ {locationError} - Showing all available jobs.
+          ⚠️ {locationError} - {t("jobs.showingAllJobs")}
         </div>
       )}
 
@@ -153,19 +155,19 @@ export const BrowseJobsPage = () => {
       )}
 
       <Select
-        label="Filter by Category"
+        label={t("jobs.filterByCategory")}
         options={categories}
         value={category}
         onChange={(e) => setCategory(e.target.value)}
       />
 
       <Select
-        label="Radius (km)"
+        label={t("jobs.radiusKm")}
         options={[
-          { label: "10 km", value: "10" },
-          { label: "20 km", value: "20" },
-          { label: "30 km", value: "30" },
-          { label: "50 km", value: "50" },
+          { label: `10 ${t("jobs.radiusUnit", "km")}`, value: "10" },
+          { label: `20 ${t("jobs.radiusUnit", "km")}`, value: "20" },
+          { label: `30 ${t("jobs.radiusUnit", "km")}`, value: "30" },
+          { label: `50 ${t("jobs.radiusUnit", "km")}`, value: "50" },
         ]}
         value={String(radius)}
         onChange={(e) => setRadius(parseInt(e.target.value, 10))}
@@ -175,8 +177,8 @@ export const BrowseJobsPage = () => {
         <div className="rounded-panel bg-white p-8 text-center shadow-panel">
           <p className="text-slate-600">
             {workerLocation
-              ? `No jobs available within ${radius}km of your location`
-              : "No jobs available"}
+              ? t("jobs.noJobsWithin", { radius })
+              : t("jobs.noJobsAvailable")}
           </p>
         </div>
       ) : (
@@ -201,7 +203,7 @@ export const BrowseJobsPage = () => {
               />
               {job.distance !== null && (
                 <div className="px-4 pb-2 text-xs text-slate-500">
-                  📍 {job.distance.toFixed(1)}km away
+                  📍 {t("jobs.away", { distance: job.distance.toFixed(1) })}
                 </div>
               )}
             </div>

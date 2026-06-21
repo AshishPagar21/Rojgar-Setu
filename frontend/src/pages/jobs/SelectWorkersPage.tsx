@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { ApplicantCard } from "../../components/common/ApplicantCard";
 import { Button } from "../../components/common/Button";
@@ -9,6 +10,7 @@ import { jobService } from "../../modules/job/job.service";
 import { getErrorMessage } from "../../utils/helpers";
 
 export const SelectWorkersPage = () => {
+  const { t } = useTranslation();
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const [job, setJob] = useState<any>(null);
@@ -66,7 +68,7 @@ export const SelectWorkersPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-600">Loading...</p>
+        <p className="text-slate-600">{t("common.loading")}</p>
       </div>
     );
   }
@@ -76,8 +78,8 @@ export const SelectWorkersPage = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Select Workers"
-        subtitle={`Select ${job?.requiredWorkers || 0} workers for this job`}
+        title={t("jobs.selectWorkersTitle")}
+        subtitle={t("jobs.selectWorkersSubtitle", { count: job?.requiredWorkers || 0 })}
       />
 
       {error && (
@@ -90,7 +92,7 @@ export const SelectWorkersPage = () => {
       <div className="rounded-panel bg-blue-50 p-4 shadow-panel">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-blue-900">
-            Selected Workers
+            {t("jobs.selectedWorkersProgress")}
           </span>
           <span className="text-sm font-bold text-blue-600">
             {selectedWorkers.length} / {job?.requiredWorkers || 0}
@@ -109,7 +111,7 @@ export const SelectWorkersPage = () => {
       {/* Applicants List */}
       {availableApplicants.length === 0 ? (
         <div className="text-center text-slate-600">
-          <p>No applicants yet</p>
+          <p>{t("jobs.noApplicantsYet")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -137,8 +139,9 @@ export const SelectWorkersPage = () => {
         loading={submitting}
         disabled={selectedWorkers.length === 0}
       >
-        Select {selectedWorkers.length} Worker
-        {selectedWorkers.length !== 1 ? "s" : ""}
+        {selectedWorkers.length === 1
+          ? t("jobs.selectWorkersBtnCount", { count: 1 })
+          : t("jobs.selectWorkersBtnCountPlural", { count: selectedWorkers.length })}
       </Button>
     </div>
   );

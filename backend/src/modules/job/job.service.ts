@@ -28,27 +28,27 @@ export const jobService = {
     }
 
     const job = await prisma.job.create({
-  data: {
-    employerId,
-    title: payload.title,
-    description: buildDescriptionWithLocation(payload),
-    category: payload.category,
-    wage: payload.wage,
-    jobDate: new Date(payload.jobDate),
+      data: {
+        employerId,
+        title: payload.title,
+        description: buildDescriptionWithLocation(payload),
+        category: payload.category,
+        wage: payload.wage,
+        jobDate: new Date(payload.jobDate),
 
-    expectedStartTime: payload.expectedStartTime,
-    expectedEndTime: payload.expectedEndTime,
-    expectedWorkingHours: payload.expectedWorkingHours,
+        expectedStartTime: payload.expectedStartTime,
+        expectedEndTime: payload.expectedEndTime,
+        expectedWorkingHours: payload.expectedWorkingHours,
 
-    requiredWorkers: payload.requiredWorkers,
-    locationLine1: payload.locationLine1,
-    city: payload.city,
-    landmark: payload.landmark,
-    latitude: payload.latitude,
-    longitude: payload.longitude,
-    status: "OPEN",
-  },
-});
+        requiredWorkers: payload.requiredWorkers,
+        locationLine1: payload.locationLine1,
+        city: payload.city,
+        landmark: payload.landmark,
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+        status: "OPEN",
+      },
+    });
 
     // Increment employer's totalJobsPosted
     await prisma.employer.update({
@@ -197,6 +197,7 @@ export const jobService = {
         employer: {
           select: {
             id: true,
+            userId: true,
             name: true,
             rating: true,
           },
@@ -206,6 +207,7 @@ export const jobService = {
             worker: {
               select: {
                 id: true,
+                userId: true,
                 name: true,
                 rating: true,
               },

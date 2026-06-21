@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { paymentService } from "../../modules/payment/payment.service";
 
 export const PaymentHistoryPage = () => {
+  const { t } = useTranslation();
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -15,7 +17,7 @@ export const PaymentHistoryPage = () => {
       const data = await paymentService.getMyPayments();
       setPayments(data);
     } catch (err) {
-      setError("Failed to load payments");
+      setError(t("payment.failedToLoad"));
       console.error(err);
     } finally {
       setLoading(false);
@@ -34,7 +36,7 @@ export const PaymentHistoryPage = () => {
       const updatedData = await paymentService.getMyPayments();
       setPayments(updatedData);
     } catch (err) {
-      alert("Failed to confirm payment receipt. Please try again.");
+      alert(t("payment.failedToConfirm"));
       console.error(err);
     } finally {
       setProcessingId(null);
@@ -44,7 +46,7 @@ export const PaymentHistoryPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-600">Loading...</p>
+        <p className="text-slate-600">{t("common.loading")}</p>
       </div>
     );
   }
@@ -56,7 +58,7 @@ export const PaymentHistoryPage = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Payment History" subtitle="Track your earnings" />
+      <PageHeader title={t("payment.historyTitle")} subtitle={t("payment.historySubtitle")} />
 
       {error && (
         <div className="rounded bg-red-50 p-3 text-sm text-red-600">
@@ -67,11 +69,11 @@ export const PaymentHistoryPage = () => {
       {/* Summary Panels */}
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-panel bg-blue-50 p-4 shadow-panel">
-          <p className="text-xs text-slate-600">Total Earned</p>
+          <p className="text-xs text-slate-600">{t("payment.totalEarned")}</p>
           <p className="text-2xl font-bold text-blue-600">₹{totalEarnings}</p>
         </div>
         <div className="rounded-panel bg-green-50 p-4 shadow-panel">
-          <p className="text-xs text-slate-600">Received</p>
+          <p className="text-xs text-slate-600">{t("payment.totalReceived")}</p>
           <p className="text-2xl font-bold text-green-600">₹{totalReceived}</p>
         </div>
       </div>
@@ -79,7 +81,7 @@ export const PaymentHistoryPage = () => {
       {/* Payments List */}
       {payments.length === 0 ? (
         <div className="rounded-panel bg-white p-8 text-center shadow-panel">
-          <p className="text-slate-600">No payments yet</p>
+          <p className="text-slate-600">{t("payment.noPayments")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -102,11 +104,11 @@ export const PaymentHistoryPage = () => {
                     </p>
                     {payment.paymentMethod && (
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Paid via:{" "}
+                        {t("payment.paidVia")}:{" "}
                         <span className="font-semibold text-slate-700">
                           {payment.paymentMethod === "CASH"
-                            ? "Cash"
-                            : "Online / UPI"}
+                            ? t("payment.cash")
+                            : t("payment.onlineUpi")}
                         </span>
                       </p>
                     )}
@@ -123,8 +125,7 @@ export const PaymentHistoryPage = () => {
                 {isWaitingConfirmation && (
                   <div className="mt-2 pt-3 border-t border-slate-100 flex items-center justify-between gap-4 bg-yellow-50/50 p-2.5 rounded-lg">
                     <p className="text-xs text-amber-800">
-                      Employer marked this payment as paid outside the app. Did
-                      you receive it?
+                      {t("payment.receiptPrompt")}
                     </p>
                     <button
                       onClick={() => handleConfirmReceived(payment.id)}
@@ -132,8 +133,8 @@ export const PaymentHistoryPage = () => {
                       className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-medium text-xs rounded transition whitespace-nowrap"
                     >
                       {processingId === payment.id
-                        ? "Confirming..."
-                        : "Confirm Received"}
+                        ? t("payment.confirming")
+                        : t("payment.confirmReceived")}
                     </button>
                   </div>
                 )}

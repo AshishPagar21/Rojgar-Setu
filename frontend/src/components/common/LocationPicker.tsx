@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./Button";
 import {
   getCurrentLocation,
@@ -30,8 +31,10 @@ export const LocationPicker = ({
   onCityChange,
   onLandmarkAreaChange,
   error,
-  label = "Job Location",
+  label,
 }: LocationPickerProps) => {
+  const { t } = useTranslation();
+  const displayLabel = label || t("jobs.jobLocationLabel");
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const currentLocationMarker = useRef<any>(null);
@@ -76,7 +79,7 @@ export const LocationPicker = ({
     jobLatRef.current = lat;
     jobLngRef.current = lng;
 
-    
+
 
     lastMapUpdateAtRef.current = Date.now();
 
@@ -171,6 +174,35 @@ export const LocationPicker = ({
     }
   };
 
+  useEffect(() => {
+    if (!locationLine1 && !city && !landmarkArea) return;
+
+    const now = Date.now();
+    const lastAutofill = lastAutofillRef.current;
+    const isAutofillMatch =
+      lastAutofill.locationLine1 === locationLine1 &&
+      lastAutofill.city === city &&
+      lastAutofill.landmarkArea === landmarkArea;
+
+    if (isAutofillMatch && now - lastMapUpdateAtRef.current < 1500) {
+      return;
+    }
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      searchLocation();
+    }, 450);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [locationLine1, city, landmarkArea]);
+
   // INITIALIZE MAP
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -197,7 +229,7 @@ export const LocationPicker = ({
           document.body.appendChild(script);
         }
       } catch (err) {
-        setLocationError("Map initialization failed");
+        setLocationError(t("jobs.mapInitFailed"));
       }
     };
 
@@ -360,7 +392,7 @@ export const LocationPicker = ({
 
       map.current?.setView([location.latitude, location.longitude], 16);
     } catch (err) {
-      setLocationError("Failed to get location");
+      setLocationError(t("jobs.failedToGetLocation"));
       // Reset initialization flag so the user can re-try clicking the button
       hasInitializedLocationRef.current = false;
     } finally {
@@ -372,7 +404,7 @@ export const LocationPicker = ({
     <div className="space-y-4">
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-slate-700">
-          {label}
+          {displayLabel}
         </span>
 
         {/* MAP */}
@@ -386,7 +418,7 @@ export const LocationPicker = ({
 
           {fetchingAddress ? (
             <div className="mt-1 text-xs text-slate-500">
-              Resolving address...
+              {t("jobs.resolvingAddress")}
             </div>
           ) : null}
 
@@ -403,7 +435,7 @@ export const LocationPicker = ({
           loading={loading}
           onClick={handleUseCurrentLocation}
         >
-          📍 Use My Current Location
+          📍 {t("jobs.useCurrentLocation")}
         </Button>
 
         {/* ERROR */}

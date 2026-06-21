@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { attendanceService } from "../../modules/attendance/attendance.service";
 
 export const AttendanceHistoryPage = () => {
+  const { t } = useTranslation();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -16,7 +18,7 @@ export const AttendanceHistoryPage = () => {
         const data = await attendanceService.getMyAttendance();
         setRecords(data);
       } catch (err) {
-        setError("Failed to load attendance");
+        setError(t("attendance.failedToLoad"));
         console.error(err);
       } finally {
         setLoading(false);
@@ -24,12 +26,12 @@ export const AttendanceHistoryPage = () => {
     };
 
     fetchAttendance();
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-600">Loading...</p>
+        <p className="text-slate-600">{t("common.loading")}</p>
       </div>
     );
   }
@@ -42,7 +44,7 @@ export const AttendanceHistoryPage = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Attendance History" subtitle="Your work records" />
+      <PageHeader title={t("attendance.historyTitle")} subtitle={t("attendance.historySubtitle")} />
 
       {error && (
         <div className="rounded bg-red-50 p-3 text-sm text-red-600">
@@ -52,7 +54,7 @@ export const AttendanceHistoryPage = () => {
 
       {records.length === 0 ? (
         <div className="rounded-panel bg-white p-8 text-center shadow-panel">
-          <p className="text-slate-600">No attendance records yet</p>
+          <p className="text-slate-600">{t("attendance.noRecords")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -64,22 +66,22 @@ export const AttendanceHistoryPage = () => {
               <p className="font-medium text-slate-900">{record.job.title}</p>
               <div className="mt-2 space-y-1 text-sm">
                 <p className="text-slate-600">
-                  Status: <StatusBadge status={record.status} />
+                  {t("attendance.status")}: <StatusBadge status={record.status} />
                 </p>
                 {record.checkInTime && (
                   <p className="text-slate-600">
-                    Check-in:{" "}
+                    {t("attendance.checkIn")}:{" "}
                     {new Date(record.checkInTime).toLocaleTimeString()}
                   </p>
                 )}
                 {record.checkOutTime && (
                   <>
                     <p className="text-slate-600">
-                      Check-out:{" "}
+                      {t("attendance.checkOut")}:{" "}
                       {new Date(record.checkOutTime).toLocaleTimeString()}
                     </p>
                     <p className="font-semibold text-slate-900">
-                      Hours Worked:{" "}
+                      {t("attendance.hoursWorked")}:{" "}
                       {calculateHours(record.checkInTime, record.checkOutTime)}
                     </p>
                   </>

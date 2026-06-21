@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 interface JobCardProps {
   id: number;
@@ -33,6 +34,8 @@ export const JobCard: React.FC<JobCardProps> = ({
   onApply,
   onSelectWorkers,
 }) => {
+  const { t } = useTranslation();
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "OPEN":
@@ -60,7 +63,7 @@ export const JobCard: React.FC<JobCardProps> = ({
         <span
           className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}
         >
-          {status}
+          {t(`status.${status}`)}
         </span>
       </div>
 
@@ -68,26 +71,26 @@ export const JobCard: React.FC<JobCardProps> = ({
 
       <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
         <div>
-          <span className="text-slate-500">Category</span>
-          <p className="font-medium text-slate-900">{category}</p>
+          <span className="text-slate-500">{t("jobs.category")}</span>
+          <p className="font-medium text-slate-900">{t(`jobs.categories.${category}`, category)}</p>
         </div>
         <div>
-          <span className="text-slate-500">Wage</span>
+          <span className="text-slate-500">{t("jobs.wage")}</span>
           <p className="font-medium text-slate-900">₹{wage}</p>
         </div>
         <div>
-          <span className="text-slate-500">Date</span>
+          <span className="text-slate-500">{t("jobs.jobDate")}</span>
           <p className="font-medium text-slate-900">
             {new Date(jobDate).toLocaleDateString()}
           </p>
         </div>
         <div>
-          <span className="text-slate-500">Workers Needed</span>
+          <span className="text-slate-500">{t("jobs.requiredWorkers")}</span>
           <p className="font-medium text-slate-900">{requiredWorkers}</p>
         </div>
         {location && (
           <div className="col-span-2">
-            <span className="text-slate-500">Location</span>
+            <span className="text-slate-500">{t("jobDetails.location")}</span>
             <p className="font-medium text-slate-900 line-clamp-1">
               {location}
             </p>
@@ -97,11 +100,11 @@ export const JobCard: React.FC<JobCardProps> = ({
 
       {employerRating !== undefined && (
         <div className="mb-4 text-sm">
-          <span className="text-slate-500">Rating</span>
+          <span className="text-slate-500">{t("profile.rating")}</span>
           <p className="font-medium text-slate-900">
             {employerRating > 0
               ? `${employerRating.toFixed(1)} ⭐`
-              : "No ratings"}
+              : t("rating.noRatings")}
           </p>
         </div>
       )}
@@ -111,14 +114,14 @@ export const JobCard: React.FC<JobCardProps> = ({
           onClick={() => onViewDetails(id)}
           className="flex-1 h-12 bg-brand-100 hover:bg-brand-50 text-brand-700 font-medium rounded-lg transition-colors"
         >
-          View Details
+          {t("jobs.viewDetails")}
         </button>
         {onApply && (
           <button
             onClick={() => onApply(id)}
             className="flex-1 h-12 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors"
           >
-            Apply
+            {t("jobs.apply")}
           </button>
         )}
         {onSelectWorkers && (
@@ -126,7 +129,7 @@ export const JobCard: React.FC<JobCardProps> = ({
             onClick={() => onSelectWorkers(id)}
             className="flex-1 h-12 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors"
           >
-            Select Workers
+            {t("jobs.selectWorkersBtn")}
           </button>
         )}
       </div>

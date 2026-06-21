@@ -18,6 +18,7 @@ exports.jobService = {
      */
     async createJob(employerId, payload) {
         // Validate coordinates
+        console.log("PAYLOAD RECEIVED:", payload);
         if (!payload.latitude || !payload.longitude) {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Location coordinates (latitude and longitude) are required");
         }
@@ -29,6 +30,9 @@ exports.jobService = {
                 category: payload.category,
                 wage: payload.wage,
                 jobDate: new Date(payload.jobDate),
+                expectedStartTime: payload.expectedStartTime,
+                expectedEndTime: payload.expectedEndTime,
+                expectedWorkingHours: payload.expectedWorkingHours,
                 requiredWorkers: payload.requiredWorkers,
                 locationLine1: payload.locationLine1,
                 city: payload.city,
@@ -156,6 +160,7 @@ exports.jobService = {
                 employer: {
                     select: {
                         id: true,
+                        userId: true,
                         name: true,
                         rating: true,
                     },
@@ -165,6 +170,7 @@ exports.jobService = {
                         worker: {
                             select: {
                                 id: true,
+                                userId: true,
                                 name: true,
                                 rating: true,
                             },

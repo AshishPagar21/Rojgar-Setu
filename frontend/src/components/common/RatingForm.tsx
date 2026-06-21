@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { Button } from "./Button";
@@ -8,7 +9,7 @@ import { ratingService } from "../../modules/rating/rating.service";
 import { getErrorMessage } from "../../utils/helpers";
 
 const schema = z.object({
-  ratingValue: z.number().min(1).max(5),
+  ratingValue: z.coerce.number().min(1).max(5),
   reviewText: z.string().optional(),
 });
 
@@ -27,6 +28,7 @@ export const RatingForm = ({
   onSuccess,
   onCancel,
 }: RatingFormProps) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -34,6 +36,7 @@ export const RatingForm = ({
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -68,21 +71,22 @@ export const RatingForm = ({
     <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-2">
-          Rating
+          {t("rating.ratingLabel")}
         </label>
         <div className="flex gap-2">
+          <input
+            type="hidden"
+            {...register("ratingValue", { valueAsNumber: true })}
+          />
           {[1, 2, 3, 4, 5].map((value) => (
-            <label key={value} className="cursor-pointer">
-              <input
-                type="radio"
-                value={value}
-                {...register("ratingValue", { valueAsNumber: true })}
-                className="sr-only"
-              />
-              <span className="text-4xl">
-                {value <= selectedRating ? "?" : "?"}
-              </span>
-            </label>
+            <button
+              key={value}
+              type="button"
+              onClick={() => setValue("ratingValue", value, { shouldValidate: true })}
+              className="text-4xl text-amber-500 hover:scale-110 active:scale-95 transition-transform focus:outline-none"
+            >
+              {value <= selectedRating ? "★" : "☆"}
+            </button>
           ))}
         </div>
         {errors.ratingValue && (
@@ -94,11 +98,11 @@ export const RatingForm = ({
 
       <label className="block w-full">
         <span className="mb-1 block text-sm font-medium text-slate-700">
-          Review (Optional)
+          {t("rating.reviewLabel")}
         </span>
         <textarea
           className="h-20 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-base outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-100"
-          placeholder="Share your experience..."
+          placeholder={t("rating.reviewPlaceholder")}
           {...register("reviewText")}
         />
         {errors.reviewText && (
@@ -122,10 +126,10 @@ export const RatingForm = ({
           onClick={onCancel}
           disabled={loading}
         >
-          Cancel
+          {t("jobs.cancel")}
         </Button>
         <Button type="submit" fullWidth loading={loading}>
-          Submit Rating
+          {t("rating.submitRating")}
         </Button>
       </div>
     </form>

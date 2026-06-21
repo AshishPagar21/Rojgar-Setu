@@ -29,7 +29,7 @@ export const MyJobsPage = () => {
         const data = await jobService.getMyJobs();
         setJobs(data);
       } catch (err) {
-        setError("Failed to load jobs");
+        setError(t("jobs.failedToLoad"));
         console.error(err);
       } finally {
         setLoading(false);
@@ -37,26 +37,26 @@ export const MyJobsPage = () => {
     };
 
     fetchJobs();
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-600">{t("common.loading")}</p>
+        <p className="text-slate-600">{t("common.pleaseWait")}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My Jobs" subtitle="Manage your job postings" />
+      <PageHeader title={t("jobs.myJobsTitle")} subtitle={t("jobs.myJobsSubtitle")} />
 
       <Button
         fullWidth
         onClick={() => navigate("/jobs/create")}
         className="bg-blue-600 hover:bg-blue-700"
       >
-        Post New Job
+        {t("jobs.postNewJob")}
       </Button>
 
       {error && (
@@ -67,13 +67,13 @@ export const MyJobsPage = () => {
 
       {jobs.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-panel bg-white p-8 text-center shadow-panel">
-          <p className="text-slate-600">No jobs posted yet</p>
+          <p className="text-slate-600">{t("jobs.noJobsPosted")}</p>
           <Button
             onClick={() => navigate("/jobs/create")}
             variant="secondary"
             className="mt-4"
           >
-            Post Your First Job
+            {t("jobs.postFirstJob")}
           </Button>
         </div>
       ) : (

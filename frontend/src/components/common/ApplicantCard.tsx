@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 interface ApplicantCardProps {
   id: number;
@@ -23,6 +24,8 @@ export const ApplicantCard: React.FC<ApplicantCardProps> = ({
   isSelected = false,
   onToggleSelect,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div
       className={`bg-white rounded-lg border-2 p-4 transition-all ${
@@ -33,8 +36,8 @@ export const ApplicantCard: React.FC<ApplicantCardProps> = ({
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-slate-900">{name}</h3>
           <div className="flex gap-2 text-sm text-slate-500 mt-1">
-            {age && <span>Age: {age}</span>}
-            {gender && <span>{gender}</span>}
+            {age && <span>{t("profile.age")}: {age}</span>}
+            {gender && <span>{t(`profile.${gender.toLowerCase()}`, gender)}</span>}
           </div>
         </div>
         {onToggleSelect && (
@@ -49,24 +52,24 @@ export const ApplicantCard: React.FC<ApplicantCardProps> = ({
 
       <div className="grid grid-cols-3 gap-3 mb-4 text-sm">
         <div>
-          <span className="text-slate-500">Rating</span>
+          <span className="text-slate-500">{t("profile.rating")}</span>
           <p className="font-medium text-slate-900">
-            {rating > 0 ? `${rating.toFixed(1)} ⭐` : "New"}
+            {rating > 0 ? `${rating.toFixed(1)} ⭐` : t("status.NEW")}
           </p>
         </div>
         <div>
-          <span className="text-slate-500">Reviews</span>
+          <span className="text-slate-500">{t("rating.feedback")}</span>
           <p className="font-medium text-slate-900">{totalRatings}</p>
         </div>
         <div>
-          <span className="text-slate-500">Jobs Done</span>
+          <span className="text-slate-500">{t("profile.jobsDone")}</span>
           <p className="font-medium text-slate-900">{totalJobsCompleted}</p>
         </div>
       </div>
 
       {isSelected && (
         <div className="bg-brand-100 text-brand-700 px-3 py-2 rounded text-sm font-medium text-center">
-          ✓ Selected
+          ✓ {t("status.SELECTED")}
         </div>
       )}
     </div>

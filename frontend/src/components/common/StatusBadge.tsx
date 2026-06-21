@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 interface StatusBadgeProps {
   status:
@@ -24,6 +25,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   status,
   size = "md",
 }) => {
+  const { t } = useTranslation();
+
   const getStyles = (status: string) => {
     switch (status) {
       case "OPEN":
@@ -76,7 +79,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     <span
       className={`rounded-full font-medium inline-block ${getSizeClasses(size)} ${getStyles(status)}`}
     >
-      {status}
+      {t(`status.${status}`)}
     </span>
   );
 };

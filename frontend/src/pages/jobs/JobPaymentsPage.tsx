@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
@@ -8,6 +9,7 @@ import { paymentService } from "../../modules/payment/payment.service";
 import { getErrorMessage } from "../../utils/helpers";
 
 export const JobPaymentsPage = () => {
+  const { t } = useTranslation();
   const { jobId } = useParams<{ jobId: string }>();
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +29,7 @@ export const JobPaymentsPage = () => {
         const data = await paymentService.getJobPayments(Number(jobId));
         setPayments(data);
       } catch (err) {
-        setError(getErrorMessage(err));
+        setError(t("payment.failedToLoad"));
         console.error(err);
       } finally {
         setLoading(false);
@@ -73,7 +75,7 @@ export const JobPaymentsPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-600">Loading...</p>
+        <p className="text-slate-600">{t("common.loading")}</p>
       </div>
     );
   }
@@ -86,8 +88,8 @@ export const JobPaymentsPage = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Job Payments"    
-        subtitle="Track and manage worker payments"
+        title={t("payment.jobPaymentsTitle")}    
+        subtitle={t("payment.jobPaymentsSubtitle")}
       />
 
       {error && (
@@ -99,11 +101,11 @@ export const JobPaymentsPage = () => {
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-panel bg-blue-50 p-4 shadow-panel">
-          <p className="text-xs text-slate-600">Total Amount</p>
+          <p className="text-xs text-slate-600">{t("payment.totalAmount")}</p>
           <p className="text-2xl font-bold text-blue-600">₹{total}</p>
         </div>
         <div className="rounded-panel bg-green-50 p-4 shadow-panel">
-          <p className="text-xs text-slate-600">Paid</p>
+          <p className="text-xs text-slate-600">{t("payment.paid")}</p>
           <p className="text-2xl font-bold text-green- green-600">
             ₹{paidAmount}
           </p>
@@ -113,7 +115,7 @@ export const JobPaymentsPage = () => {
       {/* Payments List */}
       {payments.length === 0 ? (
         <div className="text-center text-slate-600">
-          <p>No payments yet</p>
+          <p>{t("payment.noPayments")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -138,11 +140,11 @@ export const JobPaymentsPage = () => {
                     </p>
                     {payment.paymentMethod && (
                       <p className="text-xs text-slate-500 mt-1">
-                        Marked via:{" "}
+                        {t("payment.markedVia")}:{" "}
                         <span className="font-medium text-slate-700">
                           {payment.paymentMethod === "CASH"
-                            ? "Cash"
-                            : "Online / UPI"}
+                            ? t("payment.cash")
+                            : t("payment.onlineUpi")}
                         </span>
                       </p>
                     )}
@@ -166,7 +168,7 @@ export const JobPaymentsPage = () => {
                           }
                           className="text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
                         />
-                        Cash
+                        {t("payment.cash")}
                       </label>
                       <label className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
                         <input
@@ -178,7 +180,7 @@ export const JobPaymentsPage = () => {
                           }
                           className="text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
                         />
-                        Online / UPI
+                        {t("payment.onlineUpi")}
                       </label>
                     </div>
 
@@ -188,7 +190,7 @@ export const JobPaymentsPage = () => {
                       loading={markingId === payment.id}
                       className="text-xs px-4 py-2"
                     >
-                      Mark Paid ({currentMethod === "CASH" ? "Cash" : "UPI"})
+                      {currentMethod === "CASH" ? t("payment.markPaidCash") : t("payment.markPaidUpi")}
                     </Button>
                   </div>
                 )}
@@ -196,7 +198,7 @@ export const JobPaymentsPage = () => {
                 {/* Verification Progress Message */}
                 {payment.employerConfirmed && payment.status === "PENDING" && (
                   <div className="text-xs text-amber-700 bg-amber-50 border border-amber-100 p-2.5 rounded-lg text-center font-medium">
-                    Waiting for worker to confirm receipt...
+                    {t("payment.waitingWorkerConfirmation")}
                   </div>
                 )}
               </div>

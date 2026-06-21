@@ -30,6 +30,7 @@ export interface Worker {
   rating: number;
   totalRatings: number;
   totalJobsCompleted: number;
+  reliabilityScore: number;
 }
 
 export interface AuthProfile {

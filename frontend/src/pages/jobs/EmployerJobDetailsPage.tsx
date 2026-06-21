@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
+import { RatingForm } from "../../components/common/RatingForm";
+import { useAuth } from "../../hooks/useAuth";
 import { attendanceService } from "../../modules/attendance/attendance.service";
 import { disputeService } from "../../modules/dispute/dispute.service";
 import { jobService } from "../../modules/job/job.service";
 import { jobApplicationService } from "../../modules/jobApplication/jobApplication.service";
+import { ratingService } from "../../modules/rating/rating.service";
 import { socketService } from "../../services/socket.service";
 
 const extractLocation = (description: string) => {
@@ -19,17 +23,25 @@ const cleanDescription = (description: string) =>
   description.replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
 
 const getSelectedApplicants = (applicants: any[]) =>
-  applicants.filter((applicant) => applicant.status === "SELECTED");
+  applicants.filter(
+    (applicant) =>
+      applicant.status === "SELECTED" || applicant.status === "COMPLETED",
+  );
 
 export const EmployerJobDetailsPage = () => {
+  const { t } = useTranslation();
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [job, setJob] = useState<any>(null);
   const [applicants, setApplicants] = useState<any[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [action, setAction] = useState<string>();
+  const [ratings, setRatings] = useState<any[]>([]);
+  const [ratingWorkerUserId, setRatingWorkerUserId] = useState<number | null>(null);
+  const [ratingWorkerName, setRatingWorkerName] = useState<string>("");
 
   const refreshData = async (jobNumber: number) => {
     const jobData = await jobService.getJobById(jobNumber);
@@ -50,6 +62,13 @@ export const EmployerJobDetailsPage = () => {
     } catch {
       setAttendanceRecords([]);
     }
+
+    try {
+      const ratingsData = await ratingService.getJobRatings(jobNumber);
+      setRatings(ratingsData || []);
+    } catch {
+      setRatings([]);
+    }
   };
 
   useEffect(() => {
@@ -59,7 +78,7 @@ export const EmployerJobDetailsPage = () => {
         setLoading(true);
         await refreshData(Number(jobId));
       } catch (err) {
-        setError("Failed to load job details");
+        setError(t("jobDetails.failedToLoad"));
         console.error(err);
       } finally {
         setLoading(false);
@@ -105,7 +124,7 @@ export const EmployerJobDetailsPage = () => {
       await jobService.cancelJob(Number(jobId));
       navigate("/jobs/my");
     } catch (err) {
-      setError("Failed to cancel job");
+      setError(t("jobDetails.failedToCancel"));
       console.error(err);
     } finally {
       setAction(undefined);
@@ -119,7 +138,7 @@ export const EmployerJobDetailsPage = () => {
       await jobService.completeJob(Number(jobId));
       setJob({ ...job, status: "COMPLETED" });
     } catch (err) {
-      setError("Failed to complete job");
+      setError(t("jobDetails.failedToComplete"));
       console.error(err);
     } finally {
       setAction(undefined);
@@ -133,7 +152,7 @@ export const EmployerJobDetailsPage = () => {
       await attendanceService.approveAttendance(attendanceId);
       await refreshData(Number(jobId));
     } catch (err) {
-      setError("Failed to approve attendance");
+      setError(t("jobDetails.failedToApprove"));
       console.error(err);
     } finally {
       setAction(undefined);
@@ -143,7 +162,7 @@ export const EmployerJobDetailsPage = () => {
   const handleReportIssue = async (attendanceId: number) => {
     if (!jobId) return;
 
-    const reason = window.prompt("Enter issue reason");
+    const reason = window.prompt(t("jobDetails.enterIssueReason"));
     if (!reason?.trim()) {
       return;
     }
@@ -155,7 +174,7 @@ export const EmployerJobDetailsPage = () => {
       });
       await refreshData(Number(jobId));
     } catch (err) {
-      setError("Failed to report attendance issue");
+      setError(t("jobDetails.failedToReportIssue"));
       console.error(err);
     } finally {
       setAction(undefined);
@@ -163,14 +182,14 @@ export const EmployerJobDetailsPage = () => {
   };
 
   const handleRaiseDispute = async (attendanceId: number) => {
-    const reason = window.prompt("Enter dispute reason");
+    const reason = window.prompt(t("jobDetails.enterDisputeReason"));
     if (!reason?.trim()) {
       return;
     }
 
-    const description = window.prompt("Enter dispute description") ?? "";
+    const description = window.prompt(t("jobDetails.enterDisputeDescription")) ?? "";
     if (!description.trim()) {
-      setError("Dispute description is required");
+      setError(t("jobDetails.disputeDescRequired"));
       return;
     }
 
@@ -183,7 +202,7 @@ export const EmployerJobDetailsPage = () => {
         description: description.trim(),
       });
     } catch (err) {
-      setError("Failed to create dispute");
+      setError(t("jobDetails.failedToCreateDispute"));
       console.error(err);
     } finally {
       setAction(undefined);
@@ -195,7 +214,7 @@ export const EmployerJobDetailsPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-600">Loading...</p>
+        <p className="text-slate-600">{t("common.loading")}</p>
       </div>
     );
   }
@@ -203,14 +222,14 @@ export const EmployerJobDetailsPage = () => {
   if (!job) {
     return (
       <div className="rounded-panel bg-white p-5 text-center shadow-panel">
-        <p className="text-slate-600">Job not found</p>
+        <p className="text-slate-600">{t("jobDetails.jobNotFound")}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title={job.title} subtitle={job.category} />
+      <PageHeader title={job.title} subtitle={t(`jobs.categories.${job.category}`, job.category) as string} />
 
       {error && (
         <div className="rounded bg-red-50 p-3 text-sm text-red-600">
@@ -221,11 +240,11 @@ export const EmployerJobDetailsPage = () => {
       <div className="rounded-panel bg-white p-5 shadow-panel">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-sm text-slate-600">Status</p>
+            <p className="text-sm text-slate-600">{t("jobDetails.status")}</p>
             <StatusBadge status={job.status} />
           </div>
           <div className="text-right">
-            <p className="text-sm text-slate-600">Wage</p>
+            <p className="text-sm text-slate-600">{t("jobDetails.wage")}</p>
             <p className="text-2xl font-bold text-slate-900">₹{job.wage}</p>
           </div>
         </div>
@@ -234,11 +253,11 @@ export const EmployerJobDetailsPage = () => {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-xs text-slate-600">Job Date</p>
+            <p className="text-xs text-slate-600">{t("jobDetails.jobDate")}</p>
             <p className="text-sm font-medium text-slate-900">{job.jobDate}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-600">Required Workers</p>
+            <p className="text-xs text-slate-600">{t("jobDetails.requiredWorkers")}</p>
             <p className="text-sm font-medium text-slate-900">
               {job.requiredWorkers}
             </p>
@@ -248,7 +267,7 @@ export const EmployerJobDetailsPage = () => {
         <hr className="my-4" />
 
         <div>
-          <p className="text-sm font-medium text-slate-900">Description</p>
+          <p className="text-sm font-medium text-slate-900">{t("jobDetails.description")}</p>
           <p className="mt-2 text-sm text-slate-700">
             {cleanDescription(job.description)}
           </p>
@@ -258,7 +277,7 @@ export const EmployerJobDetailsPage = () => {
           <>
             <hr className="my-4" />
             <div>
-              <p className="text-sm font-medium text-slate-900">Location</p>
+              <p className="text-sm font-medium text-slate-900">{t("jobDetails.location")}</p>
               <p className="mt-2 text-sm text-slate-700">
                 {extractLocation(job.description)}
               </p>
@@ -270,15 +289,15 @@ export const EmployerJobDetailsPage = () => {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-xs text-slate-600">Applied</p>
+            <p className="text-xs text-slate-600">{t("jobDetails.applied")}</p>
             <p className="text-2xl font-bold text-slate-900">
               {applicants.filter((a) => a.status === "APPLIED").length}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-600">Selected</p>
+            <p className="text-xs text-slate-600">{t("jobDetails.selected")}</p>
             <p className="text-2xl font-bold text-slate-900">
-              {applicants.filter((a) => a.status === "SELECTED").length}
+              {applicants.filter((a) => a.status === "SELECTED" || a.status === "COMPLETED").length}
             </p>
           </div>
         </div>
@@ -288,12 +307,21 @@ export const EmployerJobDetailsPage = () => {
             <hr className="my-4" />
             <div>
               <p className="mb-3 text-sm font-medium text-slate-900">
-                Selected Workers Attendance
+                {t("jobDetails.selectedWorkersAttendance")}
               </p>
               <div className="space-y-3">
                 {selectedApplicants.map((selectedApplicant) => {
                   const attendance = attendanceRecords.find(
                     (record) => record.workerId === selectedApplicant.workerId,
+                  );
+                  const payment = job.payments?.find(
+                     (p: any) => p.workerId === selectedApplicant.workerId,
+                  );
+                  const isPaid = payment?.status === "COMPLETED";
+                  const existingRating = ratings.find(
+                    (r) =>
+                      r.fromUserId === user?.id &&
+                      r.toUserId === selectedApplicant.worker?.userId,
                   );
                   const status = attendance?.status ?? selectedApplicant.status;
                   const canReview = attendance?.status === "PENDING_REVIEW";
@@ -310,30 +338,19 @@ export const EmployerJobDetailsPage = () => {
                           <p className="font-medium text-slate-900">
                             {attendance?.worker?.name ??
                               selectedApplicant.worker?.name ??
-                              "Worker"}
+                              t("jobDetails.worker")}
                           </p>
-                          <p className="text-sm text-slate-600">
-                            Reliability:{" "}
-                            {selectedApplicant.worker?.reliabilityScore ?? 0}
+                          <p className="text-sm text-slate-605">
+                            {t("jobDetails.reliability", { score: selectedApplicant.worker?.reliabilityScore ?? 0 })}
                           </p>
-                          <p className="text-sm text-slate-600">
-                            Check in:{" "}
-                            {attendance?.checkInTime
-                              ? new Date(
-                                  attendance.checkInTime,
-                                ).toLocaleTimeString()
-                              : "Not marked"}
+                          <p className="text-sm text-slate-605">
+                            {t("jobDetails.checkIn", { time: attendance?.checkInTime ? new Date(attendance.checkInTime).toLocaleTimeString() : t("jobDetails.notMarked") })}
                           </p>
-                          <p className="text-sm text-slate-600">
-                            Check out:{" "}
-                            {attendance?.checkOutTime
-                              ? new Date(
-                                  attendance.checkOutTime,
-                                ).toLocaleTimeString()
-                              : "Not marked"}
+                          <p className="text-sm text-slate-650">
+                            {t("jobDetails.checkOut", { time: attendance?.checkOutTime ? new Date(attendance.checkOutTime).toLocaleTimeString() : t("jobDetails.notMarked") })}
                           </p>
-                          <p className="text-sm text-slate-600">
-                            Hours worked: {attendance?.totalHours ?? "-"}
+                          <p className="text-sm text-slate-650">
+                            {t("jobDetails.hoursWorked", { hours: attendance?.totalHours ?? "-" })}
                           </p>
                         </div>
                         <StatusBadge status={status} />
@@ -352,7 +369,7 @@ export const EmployerJobDetailsPage = () => {
                               : false
                           }
                         >
-                          Approve
+                          {t("jobDetails.approve")}
                         </Button>
                         <Button
                           variant="outline"
@@ -366,7 +383,7 @@ export const EmployerJobDetailsPage = () => {
                               : false
                           }
                         >
-                          Report Issue
+                          {t("jobDetails.reportIssue")}
                         </Button>
                         <Button
                           variant="outline"
@@ -380,9 +397,34 @@ export const EmployerJobDetailsPage = () => {
                               : false
                           }
                         >
-                          Raise Dispute
+                          {t("jobDetails.raiseDispute")}
                         </Button>
                       </div>
+                      {job.status === "COMPLETED" && (
+                        <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 text-sm">
+                          <span className="text-slate-500 font-medium">{t("jobDetails.feedback")}</span>
+                          {existingRating ? (
+                            <span className="font-semibold text-emerald-650">
+                              {t("jobDetails.rated", { value: existingRating.ratingValue })}
+                            </span>
+                          ) : isPaid ? (
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setRatingWorkerUserId(selectedApplicant.worker.userId);
+                                setRatingWorkerName(selectedApplicant.worker.name);
+                              }}
+                              className="text-xs py-1 px-3 border-brand-200 text-brand-605 hover:bg-brand-50"
+                            >
+                              {t("jobDetails.rateWorker")}
+                            </Button>
+                          ) : (
+                            <span className="text-slate-400 italic">
+                              {t("jobDetails.completePaymentToRate")}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -400,7 +442,7 @@ export const EmployerJobDetailsPage = () => {
               onClick={() => navigate(`/jobs/${jobId}/applicants`)}
               className="bg-green-600 hover:bg-green-700"
             >
-              View Applicants ({applicants.length})
+              {t("jobDetails.viewApplicants", { count: applicants.length })}
             </Button>
             <Button
               fullWidth
@@ -408,7 +450,7 @@ export const EmployerJobDetailsPage = () => {
               onClick={handleCancel}
               loading={action === "canceling"}
             >
-              Cancel Job
+              {t("jobDetails.cancelJob")}
             </Button>
           </>
         )}
@@ -420,7 +462,7 @@ export const EmployerJobDetailsPage = () => {
               onClick={() => navigate(`/jobs/${jobId}/payments`)}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              View Payments
+              {t("jobDetails.viewPayments")}
             </Button>
             <Button
               fullWidth
@@ -428,17 +470,49 @@ export const EmployerJobDetailsPage = () => {
               onClick={handleComplete}
               loading={action === "completing"}
             >
-              Mark Complete
+              {t("jobDetails.markComplete")}
             </Button>
           </>
         )}
 
         {job.status === "COMPLETED" && (
           <Button fullWidth variant="secondary" disabled>
-            Job Completed
+            {t("jobDetails.jobCompleted")}
           </Button>
         )}
       </div>
+
+      {ratingWorkerUserId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">{t("jobDetails.rateWorker")}</h3>
+                <p className="text-xs text-slate-500 mt-0.5">{t("jobDetails.ratingFor", { name: ratingWorkerName })}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setRatingWorkerUserId(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 text-xl font-semibold"
+              >
+                ✕
+              </button>
+            </div>
+            <RatingForm
+              jobId={Number(jobId)}
+              toUserId={ratingWorkerUserId!}
+              onSuccess={() => {
+                setRatingWorkerUserId(null);
+                if (jobId) refreshData(Number(jobId));
+              }}
+              onCancel={() => {
+                setRatingWorkerUserId(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

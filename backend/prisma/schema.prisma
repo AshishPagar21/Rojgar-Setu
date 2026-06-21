@@ -179,6 +179,7 @@ model Rating {
   toUser      User     @relation("ratings_received", fields: [toUserId], references: [id])
 
   @@unique([jobId, fromUserId, toUserId])
+  @@index([toUserId])
   @@map("ratings")
 }
 

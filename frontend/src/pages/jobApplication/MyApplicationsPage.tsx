@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
@@ -7,6 +8,7 @@ import { StatusBadge } from "../../components/common/StatusBadge";
 import { jobApplicationService } from "../../modules/jobApplication/jobApplication.service";
 
 export const MyApplicationsPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ export const MyApplicationsPage = () => {
         const data = await jobApplicationService.getMyApplications();
         setApplications(data);
       } catch (err) {
-        setError("Failed to load applications");
+        setError(t("jobs.failedToLoadApplications"));
         console.error(err);
       } finally {
         setLoading(false);
@@ -27,12 +29,12 @@ export const MyApplicationsPage = () => {
     };
 
     fetchApplications();
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-600">Loading...</p>
+        <p className="text-slate-600">{t("common.loading")}</p>
       </div>
     );
   }
@@ -40,8 +42,8 @@ export const MyApplicationsPage = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Applications"
-        subtitle="Track your job applications"
+        title={t("common.myApplications")}
+        subtitle={t("jobs.myApplicationsSubtitle")}
       />
 
       {error && (
@@ -52,13 +54,13 @@ export const MyApplicationsPage = () => {
 
       {applications.length === 0 ? (
         <div className="rounded-panel bg-white p-8 text-center shadow-panel">
-          <p className="text-slate-600">No applications yet</p>
+          <p className="text-slate-600">{t("dashboard.noApplications")}</p>
           <Button
             onClick={() => navigate("/jobs/open")}
             variant="secondary"
             className="mt-4"
           >
-            Browse Jobs
+            {t("dashboard.browseJobs")}
           </Button>
         </div>
       ) : (
@@ -71,7 +73,9 @@ export const MyApplicationsPage = () => {
               <div className="flex-1">
                 <p className="font-medium text-slate-900">{app.job.title}</p>
                 <p className="text-xs text-slate-600">
-                  Applied on {new Date(app.createdAt).toLocaleDateString()}
+                  {t("dashboard.appliedOn", {
+                    date: new Date(app.createdAt).toLocaleDateString(),
+                  })}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -81,7 +85,7 @@ export const MyApplicationsPage = () => {
                   onClick={() => navigate(`/jobs/open/${app.jobId}`)}
                   className="text-xs"
                 >
-                  View
+                  {t("common.view")}
                 </Button>
               </div>
             </div>
