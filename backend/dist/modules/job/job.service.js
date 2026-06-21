@@ -5,6 +5,8 @@ const prisma_1 = require("../../config/prisma");
 const constants_1 = require("../../utils/constants");
 const response_1 = require("../../utils/response");
 const geolocation_1 = require("../../utils/geolocation");
+const socket_server_1 = require("../../socket/socket.server");
+const notification_service_1 = require("../notification/notification.service");
 const buildDescriptionWithLocation = (payload) => {
     const baseDescription = payload.description.trim();
     const locationLine1 = payload.locationLine1.trim();
@@ -47,6 +49,25 @@ exports.jobService = {
             where: { id: employerId },
             data: { totalJobsPosted: { increment: 1 } },
         });
+        // Real-time: Broadcast new job and notify nearby workers (within 10km)
+        const socketServer = (0, socket_server_1.getSocketServer)();
+        if (socketServer) {
+            socketServer.emit(socket_server_1.SOCKET_EVENTS.jobNew, {
+                ...job,
+                distance: null,
+            });
+            for (const [userId, location] of socket_server_1.activeWorkerLocations.entries()) {
+                const distance = (0, geolocation_1.calculateDistance)(location.latitude, location.longitude, job.latitude, job.longitude);
+                if (distance <= 10) {
+                    void notification_service_1.notificationService.createNotification({
+                        userId,
+                        title: "New Job Nearby",
+                        message: `A new job "${job.title}" has been posted within 10km of your location.`,
+                        type: "NEW_JOB_NEARBY",
+                    });
+                }
+            }
+        }
         return job;
     },
     /**
@@ -192,6 +213,11 @@ exports.jobService = {
     async cancelJob(jobId, employerId) {
         const job = await prisma_1.prisma.job.findUnique({
             where: { id: jobId },
+            include: {
+                employer: {
+                    select: { userId: true },
+                },
+            },
         });
         if (!job) {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.NOT_FOUND, "Job not found");
@@ -202,18 +228,50 @@ exports.jobService = {
         if (job.status === "COMPLETED") {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Cannot cancel a completed job");
         }
-        return prisma_1.prisma.job.update({
+        const selectedApplications = await prisma_1.prisma.jobApplication.findMany({
+            where: { jobId, status: "SELECTED" },
+            include: {
+                worker: {
+                    select: { userId: true },
+                },
+            },
+        });
+        const updatedJob = await prisma_1.prisma.job.update({
             where: { id: jobId },
             data: { status: "CANCELLED" },
         });
+        // Notify selected workers of cancellation
+        for (const app of selectedApplications) {
+            void notification_service_1.notificationService.createNotification({
+                userId: app.worker.userId,
+                title: "Job Cancelled",
+                message: `The job "${job.title}" has been cancelled by the employer.`,
+                type: "JOB_CANCELLED",
+            });
+            (0, socket_server_1.emitToUser)(app.worker.userId, socket_server_1.SOCKET_EVENTS.jobUpdated, {
+                jobId,
+                status: "CANCELLED",
+            });
+        }
+        // Also emit to employer
+        (0, socket_server_1.emitToUser)(job.employer.userId, socket_server_1.SOCKET_EVENTS.jobUpdated, {
+            jobId,
+            status: "CANCELLED",
+        });
+        return updatedJob;
     },
     /**
      * Mark job as completed (employer only)
      */
     async completeJob(jobId, employerId) {
-        return await prisma_1.prisma.$transaction(async (tx) => {
+        const result = await prisma_1.prisma.$transaction(async (tx) => {
             const job = await tx.job.findUnique({
                 where: { id: jobId },
+                include: {
+                    employer: {
+                        select: { userId: true },
+                    },
+                },
             });
             if (!job) {
                 throw new response_1.ApiError(constants_1.HTTP_STATUS.NOT_FOUND, "Job not found");
@@ -227,8 +285,24 @@ exports.jobService = {
             // Get all selected workers
             const selectedApplications = await tx.jobApplication.findMany({
                 where: { jobId, status: "SELECTED" },
-                select: { workerId: true },
+                include: {
+                    worker: {
+                        select: { id: true, userId: true },
+                    },
+                },
             });
+            // Get all payments for this job
+            const payments = await tx.payment.findMany({
+                where: { jobId },
+            });
+            // Verify that all selected applications have a payment record with status COMPLETED
+            const allPaid = selectedApplications.every((app) => {
+                const p = payments.find((pay) => pay.workerId === app.workerId);
+                return p && p.status === "COMPLETED";
+            });
+            if (!allPaid) {
+                throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Cannot complete job until all payments for selected workers are completed");
+            }
             // Update job status
             const updatedJob = await tx.job.update({
                 where: { id: jobId },
@@ -246,12 +320,101 @@ exports.jobService = {
             // Update each worker's totalJobsCompleted
             for (const app of selectedApplications) {
                 await tx.worker.update({
-                    where: { id: app.workerId },
+                    where: { id: app.worker.id },
                     data: { totalJobsCompleted: { increment: 1 } },
                 });
             }
-            return updatedJob;
+            return { updatedJob, selectedApplications, employerUserId: job.employer.userId, jobTitle: job.title };
         });
+        // Notify selected workers of completion
+        for (const app of result.selectedApplications) {
+            void notification_service_1.notificationService.createNotification({
+                userId: app.worker.userId,
+                title: "Job Completed",
+                message: `The job "${result.jobTitle}" has been marked as completed.`,
+                type: "JOB_COMPLETED",
+            });
+            (0, socket_server_1.emitToUser)(app.worker.userId, socket_server_1.SOCKET_EVENTS.jobUpdated, {
+                jobId,
+                status: "COMPLETED",
+            });
+        }
+        // Also emit to employer
+        (0, socket_server_1.emitToUser)(result.employerUserId, socket_server_1.SOCKET_EVENTS.jobUpdated, {
+            jobId,
+            status: "COMPLETED",
+        });
+        return result.updatedJob;
+    },
+    /**
+     * Update an existing job (employer only)
+     */
+    async updateJob(jobId, employerId, payload) {
+        const job = await prisma_1.prisma.job.findUnique({
+            where: { id: jobId },
+            include: {
+                jobApplications: true,
+                employer: { select: { userId: true } },
+            },
+        });
+        if (!job) {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.NOT_FOUND, "Job not found");
+        }
+        if (job.employerId !== employerId) {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "You can only edit your own jobs");
+        }
+        if (job.status === "COMPLETED" || job.status === "CANCELLED") {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Cannot edit a completed or cancelled job");
+        }
+        if (!payload.latitude || !payload.longitude) {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Location coordinates (latitude and longitude) are required");
+        }
+        const selectedWorkersCount = job.jobApplications.filter((a) => a.status === "SELECTED" || a.status === "COMPLETED").length;
+        if (payload.requiredWorkers < selectedWorkersCount) {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, `Required workers cannot be less than the number of selected workers (${selectedWorkersCount})`);
+        }
+        const updatedJob = await prisma_1.prisma.job.update({
+            where: { id: jobId },
+            data: {
+                title: payload.title,
+                description: buildDescriptionWithLocation(payload),
+                category: payload.category,
+                wage: payload.wage,
+                jobDate: new Date(payload.jobDate),
+                expectedStartTime: payload.expectedStartTime,
+                expectedEndTime: payload.expectedEndTime,
+                expectedWorkingHours: payload.expectedWorkingHours,
+                requiredWorkers: payload.requiredWorkers,
+                locationLine1: payload.locationLine1,
+                city: payload.city,
+                landmark: payload.landmark,
+                latitude: payload.latitude,
+                longitude: payload.longitude,
+            },
+        });
+        // Notify selected workers about job updates
+        const selectedApplications = await prisma_1.prisma.jobApplication.findMany({
+            where: { jobId, status: "SELECTED" },
+            include: { worker: { select: { userId: true } } },
+        });
+        for (const app of selectedApplications) {
+            void notification_service_1.notificationService.createNotification({
+                userId: app.worker.userId,
+                title: "Job Details Updated",
+                message: `The job "${job.title}" has been updated by the employer.`,
+                type: "JOB_UPDATED",
+            });
+            (0, socket_server_1.emitToUser)(app.worker.userId, socket_server_1.SOCKET_EVENTS.jobUpdated, {
+                jobId,
+                status: job.status,
+            });
+        }
+        // Also emit update to employer
+        (0, socket_server_1.emitToUser)(job.employer.userId, socket_server_1.SOCKET_EVENTS.jobUpdated, {
+            jobId,
+            status: job.status,
+        });
+        return updatedJob;
     },
 };
 //# sourceMappingURL=job.service.js.map

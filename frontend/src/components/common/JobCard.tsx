@@ -43,7 +43,6 @@ interface JobCardProps {
   distance?: number | null;
   applicationStatus?: string;
   onViewDetails: (jobId: number) => void;
-  onApply?: (jobId: number) => void;
   onSelectWorkers?: (jobId: number) => void;
 }
 
@@ -93,7 +92,6 @@ export const JobCard: React.FC<JobCardProps> = ({
   distance,
   applicationStatus,
   onViewDetails,
-  onApply,
   onSelectWorkers,
 }) => {
   const { t } = useTranslation();
@@ -266,14 +264,6 @@ export const JobCard: React.FC<JobCardProps> = ({
           >
             {t("jobs.viewDetails")}
           </button>
-          {onApply && (
-            <button
-              onClick={() => onApply(id)}
-              className="flex-1 h-10 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
-            >
-              {t("jobs.apply")}
-            </button>
-          )}
           {onSelectWorkers && (
             <button
               onClick={() => onSelectWorkers(id)}

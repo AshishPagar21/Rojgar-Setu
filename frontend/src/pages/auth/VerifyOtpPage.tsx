@@ -15,6 +15,7 @@ import { Button } from "../../components/common/Button";
 
 interface VerifyOtpState {
   mobileNumber: string;
+  otp?: string;
 }
 
 const OTP_EXPIRY_SECONDS = 600; // 10 minutes

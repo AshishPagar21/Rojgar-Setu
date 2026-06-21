@@ -17,6 +17,7 @@ import { AssignedJobsPage } from "../pages/jobApplication/AssignedJobsPage";
 import { MyApplicationsPage } from "../pages/jobApplication/MyApplicationsPage";
 import { BrowseJobsPage } from "../pages/jobs/BrowseJobsPage";
 import { CreateJobPage } from "../pages/jobs/CreateJobPage";
+import { EditJobPage } from "../pages/jobs/EditJobPage";
 import { EmployerJobDetailsPage } from "../pages/jobs/EmployerJobDetailsPage";
 import { JobPaymentsPage } from "../pages/jobs/JobPaymentsPage";
 import { MyJobsPage } from "../pages/jobs/MyJobsPage";
@@ -61,6 +62,7 @@ export const AppRouter = () => {
             <Route path="/jobs/create" element={<CreateJobPage />} />
             <Route path="/jobs/my" element={<MyJobsPage />} />
             <Route path="/jobs/:jobId" element={<EmployerJobDetailsPage />} />
+            <Route path="/jobs/:jobId/edit" element={<EditJobPage />} />
             <Route
               path="/jobs/:jobId/applicants"
               element={<SelectWorkersPage />}

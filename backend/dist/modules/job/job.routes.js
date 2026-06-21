@@ -17,5 +17,6 @@ router.get("/my", auth_middleware_1.authenticate, (0, role_middleware_1.authoriz
 router.get("/:jobId", (0, validate_middleware_1.validate)(job_validation_1.getJobByIdSchema), job_controller_1.jobController.getJobById);
 router.patch("/:jobId/cancel", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(job_validation_1.cancelJobSchema), job_controller_1.jobController.cancelJob);
 router.patch("/:jobId/complete", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(job_validation_1.completeJobSchema), job_controller_1.jobController.completeJob);
+router.put("/:jobId", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(job_validation_1.createJobSchema), job_controller_1.jobController.updateJob);
 exports.jobRoutes = router;
 //# sourceMappingURL=job.routes.js.map

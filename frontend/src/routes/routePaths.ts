@@ -11,4 +11,5 @@ export const routePaths = {
   notifications: "/notifications",
   profile: "/profile",
   unauthorized: "/unauthorized",
+  editJob: "/jobs/:jobId/edit",
 } as const;

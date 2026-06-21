@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import toast from "react-hot-toast";
 import {
   CalendarDays,
   Clock,
@@ -135,6 +136,31 @@ export const EmployerJobDetailsPage = () => {
       if (payload.jobId !== Number(jobId)) return;
       try { await refreshData(Number(jobId)); } catch {}
     };
+
+    const handleJobApplied = (application: any) => {
+      if (application.jobId !== Number(jobId)) return;
+      setApplicants((prev) => {
+        if (prev.some((a) => a.id === application.id)) return prev;
+        return [...prev, application];
+      });
+    };
+
+    const handlePaymentUpdate = (updatedPayment: any) => {
+      if (updatedPayment.jobId !== Number(jobId)) return;
+      setJob((prev: any) => {
+        if (!prev) return prev;
+        const updatedPayments = prev.payments?.map((p: any) =>
+          p.id === updatedPayment.id ? { ...p, ...updatedPayment } : p
+        ) || [];
+        return { ...prev, payments: updatedPayments };
+      });
+    };
+
+    const handleJobUpdate = (updatedJob: any) => {
+      if (updatedJob.jobId !== Number(jobId)) return;
+      refreshData(Number(jobId));
+    };
+
     socketService.on("attendance:checked-in", refresh);
     socketService.on("attendance:checked-out", refresh);
     socketService.on("attendance:approved", refresh);
@@ -142,6 +168,11 @@ export const EmployerJobDetailsPage = () => {
     socketService.on("dispute:created", refresh);
     socketService.on("dispute:updated", refresh);
     socketService.on("dispute:countered", refresh);
+    socketService.on("job:applied", handleJobApplied);
+    socketService.on("payment:paid", handlePaymentUpdate);
+    socketService.on("payment:confirmed", handlePaymentUpdate);
+    socketService.on("job:updated", handleJobUpdate);
+
     return () => {
       socketService.off("attendance:checked-in", refresh);
       socketService.off("attendance:checked-out", refresh);
@@ -150,28 +181,55 @@ export const EmployerJobDetailsPage = () => {
       socketService.off("dispute:created", refresh);
       socketService.off("dispute:updated", refresh);
       socketService.off("dispute:countered", refresh);
+      socketService.off("job:applied", handleJobApplied);
+      socketService.off("payment:paid", handlePaymentUpdate);
+      socketService.off("payment:confirmed", handlePaymentUpdate);
+      socketService.off("job:updated", handleJobUpdate);
     };
   }, [jobId]);
 
   const handleCancel = async () => {
     if (!jobId) return;
-    try { setAction("canceling"); await jobService.cancelJob(Number(jobId)); navigate("/jobs/my"); }
-    catch { setError(t("jobDetails.failedToCancel")); }
-    finally { setAction(undefined); }
+    try {
+      setAction("canceling");
+      await jobService.cancelJob(Number(jobId));
+      toast.success(t("jobDetails.cancelSuccess", "Job cancelled successfully"));
+      navigate("/jobs/my");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || t("jobDetails.failedToCancel");
+      toast.error(msg);
+    } finally {
+      setAction(undefined);
+    }
   };
 
   const handleComplete = async () => {
     if (!jobId) return;
-    try { setAction("completing"); await jobService.completeJob(Number(jobId)); setJob({ ...job, status: "COMPLETED" }); }
-    catch { setError(t("jobDetails.failedToComplete")); }
-    finally { setAction(undefined); }
+    try {
+      setAction("completing");
+      await jobService.completeJob(Number(jobId));
+      toast.success(t("jobDetails.completeSuccess", "Job marked completed successfully"));
+      setJob({ ...job, status: "COMPLETED" });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || t("jobDetails.failedToComplete");
+      toast.error(msg);
+    } finally {
+      setAction(undefined);
+    }
   };
 
   const handleApproveAttendance = async (attendanceId: number) => {
     if (!jobId) return;
-    try { setAction(`approve-${attendanceId}`); await attendanceService.approveAttendance(attendanceId); await refreshData(Number(jobId)); }
-    catch { setError(t("jobDetails.failedToApprove")); }
-    finally { setAction(undefined); }
+    try {
+      setAction(`approve-${attendanceId}`);
+      await attendanceService.approveAttendance(attendanceId);
+      toast.success(t("jobDetails.approveSuccess", "Attendance approved successfully"));
+      await refreshData(Number(jobId));
+    } catch (err: any) {
+      toast.error(t("jobDetails.failedToApprove"));
+    } finally {
+      setAction(undefined);
+    }
   };
 
   const handleRaiseDispute = async (data: { reason: string; description: string }) => {
@@ -195,6 +253,17 @@ export const EmployerJobDetailsPage = () => {
   };
 
   const selectedApplicants = getSelectedApplicants(applicants);
+
+  const isAllPaymentsDone = () => {
+    const selectedApps = applicants.filter(
+      (a) => a.status === "SELECTED" || a.status === "COMPLETED",
+    );
+    if (selectedApps.length === 0) return false;
+    return selectedApps.every((app) => {
+      const payment = job.payments?.find((p: any) => p.workerId === app.workerId);
+      return payment && payment.status === "COMPLETED";
+    });
+  };
 
   if (loading) {
     return (
@@ -292,7 +361,7 @@ export const EmployerJobDetailsPage = () => {
               shade="light"
               icon={<Tag size={18} />}
               label={t("jobs.category")}
-              value={t(`jobs.categories.${job.category}`, job.category)}
+              value={t(`jobs.categories.${job.category}`, job.category) as string}
             />
 
             {/* Applicant stats — larger numbers */}
@@ -450,6 +519,9 @@ export const EmployerJobDetailsPage = () => {
                 {t("jobDetails.viewApplicants", { count: applicants.length })}
               </span>
             </Button>
+            <Button fullWidth variant="outline" onClick={() => navigate(`/jobs/${jobId}/edit`)} className="border-brand-350 text-brand-700 hover:bg-brand-50">
+              <span className="flex items-center justify-center gap-2"><Clock size={16} />{t("jobDetails.editJob", "Edit Job")}</span>
+            </Button>
             <Button fullWidth variant="outline" onClick={handleCancel} loading={action === "canceling"}>
               <span className="flex items-center justify-center gap-2"><X size={16} />{t("jobDetails.cancelJob")}</span>
             </Button>
@@ -461,9 +533,25 @@ export const EmployerJobDetailsPage = () => {
             <Button fullWidth onClick={() => navigate(`/jobs/${jobId}/payments`)} className="bg-brand-600 hover:bg-brand-700">
               <span className="flex items-center justify-center gap-2"><CreditCard size={16} />{t("jobDetails.viewPayments")}</span>
             </Button>
-            <Button fullWidth variant="outline" onClick={handleComplete} loading={action === "completing"}>
-              <span className="flex items-center justify-center gap-2"><FlagTriangleRight size={16} />{t("jobDetails.markComplete")}</span>
+            <Button fullWidth variant="outline" onClick={() => navigate(`/jobs/${jobId}/edit`)} className="border-brand-350 text-brand-700 hover:bg-brand-50">
+              <span className="flex items-center justify-center gap-2"><Clock size={16} />{t("jobDetails.editJob", "Edit Job")}</span>
             </Button>
+            <div className="space-y-1">
+              <Button
+                fullWidth
+                variant="outline"
+                onClick={handleComplete}
+                loading={action === "completing"}
+                disabled={!isAllPaymentsDone()}
+              >
+                <span className="flex items-center justify-center gap-2"><FlagTriangleRight size={16} />{t("jobDetails.markComplete")}</span>
+              </Button>
+              {!isAllPaymentsDone() && (
+                <p className="text-xs text-amber-600 text-center font-medium mt-1 leading-snug">
+                  {t("jobDetails.paymentsPendingWarning", "You must complete all payments for selected workers before marking this job complete.")}
+                </p>
+              )}
+            </div>
           </>
         )}
 

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "../../components/common/Button";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { RatingForm } from "../../components/common/RatingForm";
@@ -119,6 +120,7 @@ export const WorkerJobDetailsPage = () => {
   const [action, setAction] = useState<string>();
   const [ratings, setRatings] = useState<any[]>([]);
   const [disputeModalOpen, setDisputeModalOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const fetchData = async () => {
     if (!jobId) return;
@@ -163,6 +165,18 @@ export const WorkerJobDetailsPage = () => {
         setAttendance(history.find((r: any) => r.jobId === Number(jobId)) ?? null);
       } catch {}
     };
+
+    const handlePaymentUpdate = (updatedPayment: any) => {
+      if (updatedPayment.jobId !== Number(jobId)) return;
+      if (profile?.worker?.id && updatedPayment.workerId !== profile.worker.id) return;
+      setPayment(updatedPayment);
+    };
+
+    const handleJobUpdate = (updatedJob: any) => {
+      if (updatedJob.jobId !== Number(jobId)) return;
+      fetchData();
+    };
+
     socketService.on("attendance:checked-in", refresh);
     socketService.on("attendance:checked-out", refresh);
     socketService.on("attendance:approved", refresh);
@@ -170,6 +184,10 @@ export const WorkerJobDetailsPage = () => {
     socketService.on("dispute:created", refresh);
     socketService.on("dispute:updated", refresh);
     socketService.on("dispute:countered", refresh);
+    socketService.on("payment:paid", handlePaymentUpdate);
+    socketService.on("payment:confirmed", handlePaymentUpdate);
+    socketService.on("job:updated", handleJobUpdate);
+
     return () => {
       socketService.off("attendance:checked-in", refresh);
       socketService.off("attendance:checked-out", refresh);
@@ -178,6 +196,9 @@ export const WorkerJobDetailsPage = () => {
       socketService.off("dispute:created", refresh);
       socketService.off("dispute:updated", refresh);
       socketService.off("dispute:countered", refresh);
+      socketService.off("payment:paid", handlePaymentUpdate);
+      socketService.off("payment:confirmed", handlePaymentUpdate);
+      socketService.off("job:updated", handleJobUpdate);
     };
   }, [jobId, profile?.worker?.id]);
 
@@ -188,8 +209,27 @@ export const WorkerJobDetailsPage = () => {
       await jobApplicationService.applyToJob(Number(jobId));
       const apps = await jobApplicationService.getMyApplications();
       setApplication(apps.find((a: any) => a.jobId === Number(jobId)));
-    } catch (err) { setError(getErrorMessage(err)); }
-    finally { setAction(undefined); }
+      toast.success(t("jobDetails.applySuccess", "Applied successfully!"));
+    } catch (err) {
+      toast.error(getErrorMessage(err) || "Failed to apply to job");
+    } finally {
+      setAction(undefined);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!jobId) return;
+    try {
+      setAction("withdrawing");
+      await jobApplicationService.withdrawApplication(Number(jobId));
+      toast.success(t("jobDetails.withdrawSuccess", "Withdrawn successfully!"));
+      setApplication(null);
+      setConfirmOpen(false);
+    } catch (err) {
+      toast.error(getErrorMessage(err) || "Failed to withdraw application");
+    } finally {
+      setAction(undefined);
+    }
   };
 
   const refreshAttendance = async () => {
@@ -279,6 +319,18 @@ export const WorkerJobDetailsPage = () => {
   const locationDisplay = buildLocationDisplay(job);
   const description     = cleanDescription(job.description);
 
+  const getJobStartDateTime = (jobDate: string, expectedStartTime: string): Date => {
+    const start = new Date(jobDate);
+    const [hours, minutes] = (expectedStartTime || "00:00").split(":").map(Number);
+    start.setHours(hours || 0, minutes || 0, 0, 0);
+    return start;
+  };
+
+  const jobStart = getJobStartDateTime(job.jobDate, job.expectedStartTime);
+  const now = new Date();
+  const hoursRemaining = (jobStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+  const canWithdraw = hoursRemaining >= 10;
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -360,7 +412,7 @@ export const WorkerJobDetailsPage = () => {
               shade="light"
               icon={<Tag size={18} />}
               label={t("jobs.category")}
-              value={t(`jobs.categories.${job.category}`, job.category)}
+              value={t(`jobs.categories.${job.category}`, job.category) as string}
             />
           </div>
 
@@ -486,9 +538,24 @@ export const WorkerJobDetailsPage = () => {
         )}
 
         {application?.status === "APPLIED" && (
-          <div className="rounded-2xl bg-brand-50 border border-brand-100 p-4 text-center flex items-center justify-center gap-2">
-            <Clock size={15} className="text-brand-500" />
-            <p className="text-sm font-semibold text-brand-700">{t("jobDetails.applicationPending")}</p>
+          <div className="space-y-2">
+            <div className="rounded-2xl bg-brand-50 border border-brand-100 p-4 text-center flex items-center justify-center gap-2">
+              <Clock size={15} className="text-brand-500" />
+              <p className="text-sm font-semibold text-brand-700">{t("jobDetails.applicationPending")}</p>
+            </div>
+            <Button
+              fullWidth
+              variant="outline"
+              onClick={() => setConfirmOpen(true)}
+              disabled={!canWithdraw}
+            >
+              {t("jobDetails.withdrawApplication", "Withdraw Application")}
+            </Button>
+            {!canWithdraw && (
+              <p className="text-xs text-center text-red-500 font-medium">
+                {t("jobDetails.withdrawLockedMessage", "Cannot withdraw within 10 hours of job start")}
+              </p>
+            )}
           </div>
         )}
 
@@ -500,12 +567,27 @@ export const WorkerJobDetailsPage = () => {
         )}
 
         {application?.status === "SELECTED" && !attendance && (
-          <Button fullWidth onClick={handleCheckIn} loading={action === "checking-in"}>
-            <span className="flex items-center justify-center gap-2">
-              <LogIn size={16} />
-              {t("jobDetails.checkInBtn")}
-            </span>
-          </Button>
+          <div className="space-y-2">
+            <Button fullWidth onClick={handleCheckIn} loading={action === "checking-in"}>
+              <span className="flex items-center justify-center gap-2">
+                <LogIn size={16} />
+                {t("jobDetails.checkInBtn")}
+              </span>
+            </Button>
+            <Button
+              fullWidth
+              variant="outline"
+              onClick={() => setConfirmOpen(true)}
+              disabled={!canWithdraw}
+            >
+              {t("jobDetails.withdrawSelection", "Withdraw from Selection")}
+            </Button>
+            {!canWithdraw && (
+              <p className="text-xs text-center text-red-500 font-medium">
+                {t("jobDetails.withdrawLockedMessage", "Cannot withdraw within 10 hours of job start")}
+              </p>
+            )}
+          </div>
         )}
 
         {attendance?.status === "CHECKED_IN" && (
@@ -624,6 +706,15 @@ export const WorkerJobDetailsPage = () => {
             ? t("admin.defenseCounter") || "Submit Counter Dispute"
             : t("jobDetails.raiseDispute")
         }
+      />
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title={t("jobDetails.confirmWithdrawTitle", "Confirm Withdrawal")}
+        message={t("jobDetails.confirmWithdrawMsg", "Are you sure you want to withdraw your application/selection? This cannot be undone.")}
+        onConfirm={handleWithdraw}
+        onCancel={() => setConfirmOpen(false)}
+        loading={action === "withdrawing"}
       />
     </div>
   );

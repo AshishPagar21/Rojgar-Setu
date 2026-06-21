@@ -30,4 +30,9 @@ export const jobApplicationService = {
     );
     return response.data.data;
   },
+
+  async withdrawApplication(jobId: number) {
+    const response = await apiClient.post(`/job-applications/job/${jobId}/withdraw`);
+    return response.data.data;
+  },
 };

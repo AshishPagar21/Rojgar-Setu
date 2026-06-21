@@ -163,75 +163,78 @@ export const ProfilePage = () => {
             <p className="text-xs text-slate-600 font-semibold mt-0.5">
               {t("common.mobileNumber")}: {user?.mobileNumber}
             </p>
-            
-            {/* Average Rating Stars Row */}
-            <div className="mt-2 flex items-center justify-center sm:justify-start gap-2">
-              {renderRatingStars(ratingValue)}
-              <span className="text-xs font-bold text-slate-605">
-                {ratingValue > 0 ? `${ratingValue.toFixed(1)} / 5.0` : t("profile.noRatings")}
-              </span>
-            </div>
+                   {/* Average Rating Stars Row */}
+            {user?.role !== "ADMIN" && (
+              <div className="mt-2 flex items-center justify-center sm:justify-start gap-2">
+                {renderRatingStars(ratingValue)}
+                <span className="text-xs font-bold text-slate-655">
+                  {ratingValue > 0 ? `${ratingValue.toFixed(1)} / 5.0` : t("profile.noRatings")}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Dynamic Statistics Section */}
-        <div className="mt-6 pt-5 border-t border-brand-200/40">
-          {user?.role === "WORKER" ? (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.rating")}</p>
-                <p className="mt-1 text-base font-black text-amber-550">
-                  ★ {ratingValue > 0 ? ratingValue.toFixed(1) : "—"}
-                </p>
-                <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.reviewsCount", { count: totalRatings })}</p>
-              </div>
+        {user?.role !== "ADMIN" && (
+          <div className="mt-6 pt-5 border-t border-brand-200/40">
+            {user?.role === "WORKER" ? (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.rating")}</p>
+                  <p className="mt-1 text-base font-black text-amber-550">
+                    ★ {ratingValue > 0 ? ratingValue.toFixed(1) : "—"}
+                  </p>
+                  <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.reviewsCount", { count: totalRatings })}</p>
+                </div>
 
-              <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.jobsDone")}</p>
-                <p className="mt-1 text-base font-black text-slate-800">
-                  {profile?.worker?.totalJobsCompleted ?? 0}
-                </p>
-                <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.completed")}</p>
-              </div>
+                <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.jobsDone")}</p>
+                  <p className="mt-1 text-base font-black text-slate-800">
+                    {profile?.worker?.totalJobsCompleted ?? 0}
+                  </p>
+                  <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.completed")}</p>
+                </div>
 
-              <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.reliability")}</p>
-                <p className={`mt-1 text-base font-black ${
-                  reliabilityScore >= 80 ? "text-emerald-600" : reliabilityScore >= 50 ? "text-amber-550" : "text-red-500"
-                }`}>
-                  {reliabilityScore}%
-                </p>
-                <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.overallScore")}</p>
+                <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.reliability")}</p>
+                  <p className={`mt-1 text-base font-black ${
+                    reliabilityScore >= 80 ? "text-emerald-600" : reliabilityScore >= 50 ? "text-amber-550" : "text-red-500"
+                  }`}>
+                    {reliabilityScore}%
+                  </p>
+                  <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.overallScore")}</p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.rating")}</p>
-                <p className="mt-1 text-base font-black text-amber-550">
-                  ★ {ratingValue > 0 ? ratingValue.toFixed(1) : "—"}
-                </p>
-                <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.reviewsCount", { count: totalRatings })}</p>
-              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.rating")}</p>
+                  <p className="mt-1 text-base font-black text-amber-550">
+                    ★ {ratingValue > 0 ? ratingValue.toFixed(1) : "—"}
+                  </p>
+                  <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.reviewsCount", { count: totalRatings })}</p>
+                </div>
 
-              <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.jobsPosted")}</p>
-                <p className="mt-1 text-base font-black text-slate-800">
-                  {profile?.employer?.totalJobsPosted ?? 0}
-                </p>
-                <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.totalPosted")}</p>
-              </div>
+                <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.jobsPosted")}</p>
+                  <p className="mt-1 text-base font-black text-slate-800">
+                    {profile?.employer?.totalJobsPosted ?? 0}
+                  </p>
+                  <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.totalPosted")}</p>
+                </div>
 
-              <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.completed")}</p>
-                <p className="mt-1 text-base font-black text-slate-800">
-                  {profile?.employer?.totalJobsCompleted ?? 0}
-                </p>
-                <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.finishedJobs")}</p>
+                <div className="rounded-2xl bg-white p-3.5 text-center border border-brand-100 shadow-xs">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t("profile.completed")}</p>
+                  <p className="mt-1 text-base font-black text-slate-800">
+                    {profile?.employer?.totalJobsCompleted ?? 0}
+                  </p>
+                  <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{t("profile.finishedJobs")}</p>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* QUICK ACTIONS & SETTINGS SECTION */}

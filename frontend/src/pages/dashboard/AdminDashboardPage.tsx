@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import toast from "react-hot-toast";
 
 import { useAuth } from "../../hooks/useAuth";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import {
   adminService,
   type AdminUser,
@@ -439,6 +441,18 @@ export const AdminDashboardPage = () => {
   const [resolvingId, setResolvingId] = useState<number | null>(null);
   const [actioningUserId, setActioningUserId] = useState<number | null>(null);
 
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
   const openDisputes = disputes.filter(
     (d) => d.status !== "RESOLVED" && d.status !== "REJECTED",
   );
@@ -476,44 +490,67 @@ export const AdminDashboardPage = () => {
         ? t("admin.releasePayoutConfirm")
         : t("admin.approveAdjustmentConfirm");
 
-    if (!window.confirm(message)) return;
-
-    setResolvingId(disputeId);
-    try {
-      await adminService.resolveDispute(disputeId, status);
-      await loadAll();
-    } catch (error) {
-      console.error("Failed to resolve dispute:", error);
-      alert(t("admin.errorResolving"));
-    } finally {
-      setResolvingId(null);
-    }
+    setConfirmState({
+      isOpen: true,
+      title: t("admin.resolveDisputeTitle", "Resolve Dispute"),
+      message,
+      onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, isOpen: false }));
+        setResolvingId(disputeId);
+        try {
+          await adminService.resolveDispute(disputeId, status);
+          toast.success(t("admin.resolveSuccess", "Dispute resolved successfully"));
+          await loadAll();
+        } catch (error) {
+          console.error("Failed to resolve dispute:", error);
+          toast.error(t("admin.errorResolving"));
+        } finally {
+          setResolvingId(null);
+        }
+      },
+    });
   };
 
   const handleSuspend = async (userId: number) => {
-    if (!window.confirm(t("admin.suspendUserConfirm"))) return;
-    setActioningUserId(userId);
-    try {
-      await adminService.suspendUser(userId);
-      await loadAll();
-    } catch {
-      alert(t("admin.failedToSuspend"));
-    } finally {
-      setActioningUserId(null);
-    }
+    setConfirmState({
+      isOpen: true,
+      title: t("admin.suspendUserTitle", "Suspend User"),
+      message: t("admin.suspendUserConfirm"),
+      onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, isOpen: false }));
+        setActioningUserId(userId);
+        try {
+          await adminService.suspendUser(userId);
+          toast.success(t("admin.suspendSuccess", "User account suspended"));
+          await loadAll();
+        } catch {
+          toast.error(t("admin.failedToSuspend"));
+        } finally {
+          setActioningUserId(null);
+        }
+      },
+    });
   };
 
   const handleReactivate = async (userId: number) => {
-    if (!window.confirm(t("admin.reactivateUserConfirm"))) return;
-    setActioningUserId(userId);
-    try {
-      await adminService.reactivateUser(userId);
-      await loadAll();
-    } catch {
-      alert(t("admin.failedToReactivate"));
-    } finally {
-      setActioningUserId(null);
-    }
+    setConfirmState({
+      isOpen: true,
+      title: t("admin.reactivateUserTitle", "Reactivate User"),
+      message: t("admin.reactivateUserConfirm"),
+      onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, isOpen: false }));
+        setActioningUserId(userId);
+        try {
+          await adminService.reactivateUser(userId);
+          toast.success(t("admin.reactivateSuccess", "User account reactivated"));
+          await loadAll();
+        } catch {
+          toast.error(t("admin.failedToReactivate"));
+        } finally {
+          setActioningUserId(null);
+        }
+      },
+    });
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
@@ -873,6 +910,13 @@ export const AdminDashboardPage = () => {
           )}
         </>
       )}
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

@@ -62,4 +62,9 @@ export const jobService = {
     const response = await apiClient.patch(`/jobs/${jobId}/complete`);
     return response.data.data;
   },
+
+  async updateJob(jobId: number, payload: CreateJobPayload) {
+    const response = await apiClient.put(`/jobs/${jobId}`, payload);
+    return response.data.data;
+  },
 };

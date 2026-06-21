@@ -25,6 +25,7 @@ export const LoginPage = () => {
       navigate(routePaths.verifyOtp, {
         state: {
           mobileNumber: result.data.mobileNumber,
+          otp: result.data.otp,
         },
       });
     } catch (err) {

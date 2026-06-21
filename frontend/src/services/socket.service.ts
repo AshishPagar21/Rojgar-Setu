@@ -96,10 +96,15 @@ const off = <T>(event: string, handler: (payload: T) => void) => {
   socket?.off(event, handler);
 };
 
+const emit = <T>(event: string, data: T) => {
+  socket?.emit(event, data);
+};
+
 export const socketService = {
   connect,
   disconnect,
   on,
   off,
+  emit,
   getSocket,
 };

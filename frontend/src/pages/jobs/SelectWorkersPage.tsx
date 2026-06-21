@@ -8,6 +8,8 @@ import { PageHeader } from "../../components/common/PageHeader";
 import { jobApplicationService } from "../../modules/jobApplication/jobApplication.service";
 import { jobService } from "../../modules/job/job.service";
 import { getErrorMessage } from "../../utils/helpers";
+import { socketService } from "../../services/socket.service";
+
 
 export const SelectWorkersPage = () => {
   const { t } = useTranslation();
@@ -41,6 +43,31 @@ export const SelectWorkersPage = () => {
     };
 
     fetchData();
+  }, [jobId]);
+
+  useEffect(() => {
+    const handleJobApplied = (application: any) => {
+      if (application.jobId !== Number(jobId)) return;
+      setApplicants((prev) => {
+        if (prev.some((a) => a.id === application.id)) return prev;
+        return [...prev, application];
+      });
+    };
+
+    const handleJobUpdated = async (payload: { jobId: number }) => {
+      if (payload.jobId !== Number(jobId)) return;
+      try {
+        const applicantData = await jobApplicationService.getJobApplicants(Number(jobId));
+        setApplicants(applicantData);
+      } catch {}
+    };
+
+    socketService.on("job:applied", handleJobApplied);
+    socketService.on("job:updated", handleJobUpdated);
+    return () => {
+      socketService.off("job:applied", handleJobApplied);
+      socketService.off("job:updated", handleJobUpdated);
+    };
   }, [jobId]);
 
   const handleToggleWorker = (workerId: number) => {

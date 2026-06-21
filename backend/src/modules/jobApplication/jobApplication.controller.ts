@@ -231,4 +231,50 @@ export const jobApplicationController = {
       next(error);
     }
   },
+
+  /**
+   * POST /api/job-applications/job/:jobId/withdraw - Worker withdraws application or selection
+   */
+  async withdrawApplication(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: "Unauthorized",
+        });
+        return;
+      }
+
+      const worker = await prisma.worker.findUnique({
+        where: { userId },
+      });
+
+      if (!worker) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({
+          success: false,
+          message: "Worker profile not found",
+        });
+        return;
+      }
+
+      const jobId = parseInt(req.params.jobId as string, 10);
+      const result = await jobApplicationService.withdrawApplication(
+        jobId,
+        worker.id,
+      );
+      sendSuccess(
+        res,
+        HTTP_STATUS.OK,
+        "Application withdrawn successfully",
+        result,
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
 };

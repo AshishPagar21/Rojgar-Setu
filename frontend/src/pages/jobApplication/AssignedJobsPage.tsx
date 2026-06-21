@@ -6,7 +6,6 @@ import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { attendanceService } from "../../modules/attendance/attendance.service";
-import { disputeService } from "../../modules/dispute/dispute.service";
 import { jobApplicationService } from "../../modules/jobApplication/jobApplication.service";
 import { useAuth } from "../../hooks/useAuth";
 import { socketService } from "../../services/socket.service";

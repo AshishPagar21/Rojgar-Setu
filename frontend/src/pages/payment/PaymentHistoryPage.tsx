@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { paymentService } from "../../modules/payment/payment.service";
+import { socketService } from "../../services/socket.service";
+
 
 export const PaymentHistoryPage = () => {
   const { t } = useTranslation();
@@ -26,6 +28,24 @@ export const PaymentHistoryPage = () => {
 
   useEffect(() => {
     fetchPayments();
+  }, []);
+
+  useEffect(() => {
+    const handlePaymentUpdate = (updatedPayment: any) => {
+      setPayments((prev) =>
+        prev.map((p) =>
+          p.id === updatedPayment.id ? { ...p, ...updatedPayment } : p
+        )
+      );
+    };
+
+    socketService.on("payment:paid", handlePaymentUpdate);
+    socketService.on("payment:confirmed", handlePaymentUpdate);
+
+    return () => {
+      socketService.off("payment:paid", handlePaymentUpdate);
+      socketService.off("payment:confirmed", handlePaymentUpdate);
+    };
   }, []);
 
   const handleConfirmReceived = async (paymentId: number) => {

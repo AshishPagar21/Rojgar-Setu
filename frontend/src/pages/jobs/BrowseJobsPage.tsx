@@ -8,6 +8,7 @@ import { PageHeader } from "../../components/common/PageHeader";
 import { Select } from "../../components/common/Select";
 import { jobService } from "../../modules/job/job.service";
 import { getCurrentLocation } from "../../utils/geolocation";
+import { socketService } from "../../services/socket.service";
 
 const extractLocation = (description?: string | null) => {
   if (!description) {
@@ -77,14 +78,12 @@ export const BrowseJobsPage = () => {
         setLoading(true);
         let data;
 
-       
-          data = await jobService.getOpenJobs({
-            category: category || undefined,
-            latitude: workerLocation?.latitude,
-            longitude: workerLocation?.longitude,
-            radius,
-          });
-        
+        data = await jobService.getOpenJobs({
+          category: category || undefined,
+          latitude: workerLocation?.latitude,
+          longitude: workerLocation?.longitude,
+          radius,
+        });
 
         // If backend returned distances, use them. Otherwise compute client-side.
         const jobsWithDistance = data.map((job: any) => ({
@@ -112,6 +111,40 @@ export const BrowseJobsPage = () => {
 
     fetchJobs();
   }, [category, workerLocation, radius, t]);
+
+  useEffect(() => {
+    const handleNewJob = (newJob: any) => {
+      let distance = null;
+      if (workerLocation) {
+        distance = calculateDistance(
+          workerLocation.latitude,
+          workerLocation.longitude,
+          newJob.latitude,
+          newJob.longitude,
+        );
+      }
+
+      if (category && newJob.category !== category) return;
+      if (distance !== null && distance > radius) return;
+
+      setJobs((prev) => {
+        if (prev.some((j) => j.id === newJob.id)) return prev;
+        return [
+          {
+            ...newJob,
+            distance,
+            employerName: newJob.employerName || newJob.employer?.name || "Employer",
+          },
+          ...prev,
+        ];
+      });
+    };
+
+    socketService.on("job:new", handleNewJob);
+    return () => {
+      socketService.off("job:new", handleNewJob);
+    };
+  }, [category, workerLocation, radius]);
 
   const categories = [
     { label: t("jobs.categories.All"), value: "" },
@@ -208,7 +241,6 @@ export const BrowseJobsPage = () => {
               employerRating={job.employer?.rating}
               distance={job.distance}
               onViewDetails={(jobId) => navigate(`/jobs/open/${jobId}`)}
-              onApply={(jobId) => navigate(`/jobs/open/${jobId}`)}
             />
           ))}
         </div>

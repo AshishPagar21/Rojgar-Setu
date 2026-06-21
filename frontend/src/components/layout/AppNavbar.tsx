@@ -157,95 +157,97 @@ export const AppNavbar = () => {
         </button>
 
         <div className="flex items-center gap-2">
-          <div className="relative" ref={notificationsRef}>
-            <button
-              type="button"
-              className="relative flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 shadow-sm transition hover:bg-slate-100"
-              onClick={() => setNotificationsOpen((prev) => !prev)}
-              aria-label="Notifications"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-                className="h-6 w-6"
+          {user?.role !== "ADMIN" && (
+            <div className="relative" ref={notificationsRef}>
+              <button
+                type="button"
+                className="relative flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 shadow-sm transition hover:bg-slate-100"
+                onClick={() => setNotificationsOpen((prev) => !prev)}
+                aria-label="Notifications"
               >
-                <path
-                  d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 1 0-14 0v5l-2 2v1h18v-1Z"
-                  fill="currentColor"
-                />
-              </svg>
-              {unreadCount > 0 ? (
-                <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
-                  {unreadCount}
-                </span>
-              ) : null}
-            </button>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                  className="h-6 w-6"
+                >
+                  <path
+                    d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 1 0-14 0v5l-2 2v1h18v-1Z"
+                    fill="currentColor"
+                  />
+                </svg>
+                {unreadCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                    {unreadCount}
+                  </span>
+                ) : null}
+              </button>
 
-            {notificationsOpen ? (
-              <div className="absolute right-0 mt-3 w-80 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
-                <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-4">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {t("notifications.title")}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {t("notifications.latestUpdates")}
-                  </p>
-                </div>
-                <div className="max-h-96 overflow-auto p-2">
-                  {notifications.length === 0 ? (
-                    <p className="rounded-2xl bg-slate-50 px-3 py-4 text-sm text-slate-500">
-                      {t("notifications.noNotifications")}
+              {notificationsOpen ? (
+                <div className="absolute right-0 mt-3 w-80 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
+                  <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-4">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {t("notifications.title")}
                     </p>
-                  ) : (
-                    notifications.map((item) => {
-                      const localized = getLocalizedNotification(item, t);
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={async () => {
-                            await notificationService.markAsRead(item.id);
-                            setUnreadCount((prev) => Math.max(prev - 1, 0));
-                            setNotifications((prev) =>
-                              prev.map((notification) =>
-                                notification.id === item.id
-                                  ? { ...notification, isRead: true }
-                                  : notification,
-                              ),
-                            );
-                          }}
-                          className="block w-full rounded-2xl px-3 py-3 text-left transition hover:bg-slate-50"
-                        >
-                          <p className="text-sm font-semibold text-slate-900">
-                            {localized.title}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500 line-clamp-2">
-                            {localized.message}
-                          </p>
-                          <p className="mt-2 text-[11px] text-slate-400">
-                            {new Date(item.createdAt).toLocaleString()}
-                          </p>
-                        </button>
-                      );
-                    })
-                  )}
+                    <p className="mt-1 text-xs text-slate-500">
+                      {t("notifications.latestUpdates")}
+                    </p>
+                  </div>
+                  <div className="max-h-96 overflow-auto p-2">
+                    {notifications.length === 0 ? (
+                      <p className="rounded-2xl bg-slate-50 px-3 py-4 text-sm text-slate-500">
+                        {t("notifications.noNotifications")}
+                      </p>
+                    ) : (
+                      notifications.map((item) => {
+                        const localized = getLocalizedNotification(item, t);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={async () => {
+                              await notificationService.markAsRead(item.id);
+                              setUnreadCount((prev) => Math.max(prev - 1, 0));
+                              setNotifications((prev) =>
+                                prev.map((notification) =>
+                                  notification.id === item.id
+                                    ? { ...notification, isRead: true }
+                                    : notification,
+                                ),
+                              );
+                            }}
+                            className="block w-full rounded-2xl px-3 py-3 text-left transition hover:bg-slate-50"
+                          >
+                            <p className="text-sm font-semibold text-slate-900">
+                              {localized.title}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500 line-clamp-2">
+                              {localized.message}
+                            </p>
+                            <p className="mt-2 text-[11px] text-slate-400">
+                              {new Date(item.createdAt).toLocaleString()}
+                            </p>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                  <div className="border-t border-slate-100 p-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationsOpen(false);
+                        navigate(routePaths.notifications);
+                      }}
+                      className="w-full rounded-2xl px-3 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
+                    >
+                      {t("notifications.viewAll")}
+                    </button>
+                  </div>
                 </div>
-                <div className="border-t border-slate-100 p-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNotificationsOpen(false);
-                      navigate(routePaths.notifications);
-                    }}
-                    className="w-full rounded-2xl px-3 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
-                  >
-                    {t("notifications.viewAll")}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+          )}
 
           <div className="relative" ref={menuRef}>
             <button

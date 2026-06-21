@@ -56,6 +56,9 @@ const verifyOtpAndLogin = async (payload) => {
         throw error;
     }
     if (existingUser) {
+        if (existingUser.status === "SUSPENDED") {
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "Your account has been suspended. Please contact admin.");
+        }
         const token = (0, jwt_1.generateToken)({
             userId: existingUser.id,
             role: existingUser.role,

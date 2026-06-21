@@ -15,5 +15,6 @@ router.get("/my-assigned", auth_middleware_1.authenticate, (0, role_middleware_1
 // Employer routes
 router.get("/job/:jobId", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(jobApplication_validation_1.getJobApplicantsSchema), jobApplication_controller_1.jobApplicationController.getJobApplicants);
 router.patch("/job/:jobId/select", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("EMPLOYER"), (0, validate_middleware_1.validate)(jobApplication_validation_1.selectWorkersSchema), jobApplication_controller_1.jobApplicationController.selectWorkers);
+router.post("/job/:jobId/withdraw", auth_middleware_1.authenticate, (0, role_middleware_1.authorizeRoles)("WORKER"), jobApplication_controller_1.jobApplicationController.withdrawApplication);
 exports.jobApplicationRoutes = router;
 //# sourceMappingURL=jobApplication.routes.js.map

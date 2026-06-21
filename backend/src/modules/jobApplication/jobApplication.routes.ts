@@ -52,4 +52,11 @@ router.patch(
   jobApplicationController.selectWorkers,
 );
 
+router.post(
+  "/job/:jobId/withdraw",
+  authenticate,
+  authorizeRoles("WORKER"),
+  jobApplicationController.withdrawApplication,
+);
+
 export const jobApplicationRoutes = router;

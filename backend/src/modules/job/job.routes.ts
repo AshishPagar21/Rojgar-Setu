@@ -56,4 +56,12 @@ router.patch(
   jobController.completeJob,
 );
 
+router.put(
+  "/:jobId",
+  authenticate,
+  authorizeRoles("EMPLOYER"),
+  validate(createJobSchema),
+  jobController.updateJob,
+);
+
 export const jobRoutes = router;

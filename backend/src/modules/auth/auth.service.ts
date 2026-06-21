@@ -85,6 +85,13 @@ const verifyOtpAndLogin = async (
   }
 
   if (existingUser) {
+    if (existingUser.status === "SUSPENDED") {
+      throw new ApiError(
+        HTTP_STATUS.FORBIDDEN,
+        "Your account has been suspended. Please contact admin.",
+      );
+    }
+
     const token = generateToken({
       userId: existingUser.id,
       role: existingUser.role,

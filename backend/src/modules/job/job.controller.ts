@@ -238,4 +238,42 @@ export const jobController = {
       next(error);
     }
   },
+
+  /**
+   * PUT /api/jobs/:jobId - Edit a job post
+   */
+  async updateJob(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: "Unauthorized",
+        });
+        return;
+      }
+
+      const employer = await prisma.employer.findUnique({
+        where: { userId },
+      });
+
+      if (!employer) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({
+          success: false,
+          message: "Employer profile not found",
+        });
+        return;
+      }
+
+      const jobId = parseInt(req.params.jobId as string, 10);
+      const job = await jobService.updateJob(jobId, employer.id, req.body as CreateJobPayload);
+      sendSuccess(res, HTTP_STATUS.OK, "Job updated successfully", job);
+    } catch (error) {
+      next(error);
+    }
+  },
 };

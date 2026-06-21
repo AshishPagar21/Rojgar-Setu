@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { authStorage } from "../modules/auth/auth.storage";
 import type { AuthProfile, User } from "../types/common.types";
 import { socketService } from "../services/socket.service";
+import { authService } from "../modules/auth/auth.service";
 
 interface AuthContextValue {
   user: User | null;
@@ -56,6 +57,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     socketService.disconnect();
+  }, [token]);
+
+  useEffect(() => {
+    const fetchLatestProfile = async () => {
+      if (token) {
+        try {
+          const data = await authService.getProfile();
+          setAuthData({
+            token,
+            user: data.user,
+            profile: data.profile,
+          });
+        } catch (err: any) {
+          if (err?.response?.status === 403) {
+            setUser((prev) => (prev ? { ...prev, status: "SUSPENDED" } : null));
+          } else if (err?.response?.status === 401) {
+            logout();
+          }
+        }
+      }
+    };
+    fetchLatestProfile();
   }, [token]);
 
   const value = useMemo(

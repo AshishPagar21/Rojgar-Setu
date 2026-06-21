@@ -7,6 +7,8 @@ import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { paymentService } from "../../modules/payment/payment.service";
 import { getErrorMessage } from "../../utils/helpers";
+import { socketService } from "../../services/socket.service";
+
 
 export const JobPaymentsPage = () => {
   const { t } = useTranslation();
@@ -37,6 +39,25 @@ export const JobPaymentsPage = () => {
     };
 
     fetchPayments();
+  }, [jobId]);
+
+  useEffect(() => {
+    const handlePaymentUpdate = (updatedPayment: any) => {
+      if (updatedPayment.jobId !== Number(jobId)) return;
+      setPayments((prev) =>
+        prev.map((p) =>
+          p.id === updatedPayment.id ? { ...p, ...updatedPayment } : p
+        )
+      );
+    };
+
+    socketService.on("payment:paid", handlePaymentUpdate);
+    socketService.on("payment:confirmed", handlePaymentUpdate);
+
+    return () => {
+      socketService.off("payment:paid", handlePaymentUpdate);
+      socketService.off("payment:confirmed", handlePaymentUpdate);
+    };
   }, [jobId]);
 
   const handleMethodChange = (

@@ -7,6 +7,7 @@ export interface User {
   role: UserRole;
   isMobileVerified: boolean;
   isActive: boolean;
+  status?: string;
   createdAt: string;
   updatedAt: string;
 }

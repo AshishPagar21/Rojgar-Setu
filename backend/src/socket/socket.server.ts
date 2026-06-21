@@ -18,6 +18,9 @@ const USER_ROOM_PREFIX = "user:";
 
 let socketServer: SocketIOServer | null = null;
 
+export const activeWorkerLocations = new Map<number, { latitude: number; longitude: number }>();
+
+
 export const SOCKET_EVENTS = {
   attendanceCheckedIn: "attendance:checked-in",
   attendanceCheckedOut: "attendance:checked-out",
@@ -27,6 +30,11 @@ export const SOCKET_EVENTS = {
   disputeCreated: "dispute:created",
   disputeUpdated: "dispute:updated",
   disputeCountered: "dispute:countered",
+  paymentPaid: "payment:paid",
+  paymentConfirmed: "payment:confirmed",
+  jobNew: "job:new",
+  jobApplied: "job:applied",
+  jobUpdated: "job:updated",
 } as const;
 
 const extractToken = (value?: string): string | null => {
@@ -84,6 +92,27 @@ export const initializeSocketServer = (
     }
 
     socket.join(`${USER_ROOM_PREFIX}${user.userId}`);
+
+    if (user.role === "WORKER") {
+      socket.on("location:update", (coords: { latitude: number; longitude: number }) => {
+        if (coords && typeof coords.latitude === "number" && typeof coords.longitude === "number") {
+          activeWorkerLocations.set(user.userId, {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+          });
+        }
+      });
+    }
+
+    socket.on("disconnect", () => {
+      if (user.role === "WORKER") {
+        const roomName = `${USER_ROOM_PREFIX}${user.userId}`;
+        const roomClients = socketServer?.sockets.adapter.rooms.get(roomName);
+        if (!roomClients || roomClients.size === 0) {
+          activeWorkerLocations.delete(user.userId);
+        }
+      }
+    });
   });
 
   return socketServer;

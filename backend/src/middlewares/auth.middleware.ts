@@ -1,14 +1,15 @@
 import type { NextFunction, Request, Response } from "express";
 
+import { prisma } from "../config/prisma";
 import { HTTP_STATUS } from "../utils/constants";
 import { verifyToken } from "../utils/jwt";
 import { ApiError } from "../utils/response";
 
-export const authenticate = (
+export const authenticate = async (
   req: Request,
   _res: Response,
   next: NextFunction,
-): void => {
+): Promise<void> => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -29,6 +30,26 @@ export const authenticate = (
 
   try {
     const payload = verifyToken(token);
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { status: true },
+    });
+
+    if (!user) {
+      next(new ApiError(HTTP_STATUS.UNAUTHORIZED, "User account not found"));
+      return;
+    }
+
+    if (user.status === "SUSPENDED") {
+      next(
+        new ApiError(
+          HTTP_STATUS.FORBIDDEN,
+          "Your account has been suspended. Please contact admin.",
+        ),
+      );
+      return;
+    }
 
     req.user = {
       userId: payload.userId,

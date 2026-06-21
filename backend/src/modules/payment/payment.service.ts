@@ -2,6 +2,9 @@ import { prisma } from "../../config/prisma";
 import { HTTP_STATUS } from "../../utils/constants";
 import { ApiError } from "../../utils/response";
 import { PaymentMethod } from "@prisma/client";
+import { emitToUsers, SOCKET_EVENTS } from "../../socket/socket.server";
+import { notificationService } from "../notification/notification.service";
+
 
 export const paymentService = {
   // GET /payments/job/:jobId
@@ -37,7 +40,10 @@ export const paymentService = {
   async markAsPaid(paymentId: number, employerId: number, method: PaymentMethod) {
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { worker: true },
+      include: {
+        worker: { select: { userId: true } },
+        employer: { select: { userId: true } },
+      },
     });
 
     if (!payment || payment.employerId !== employerId) {
@@ -53,14 +59,18 @@ export const paymentService = {
       },
     });
 
-    await prisma.notification.create({
-      data: {
-        userId: payment.worker.userId,
-        title: "Payment Sent",
-        message: "Employer marked payment as paid.",
-        type: "EMPLOYER_MARKED_PAID",
-      },
+    await notificationService.createNotification({
+      userId: payment.worker.userId,
+      title: "Payment Sent",
+      message: "Employer marked payment as paid.",
+      type: "EMPLOYER_MARKED_PAID",
     });
+
+    emitToUsers(
+      [payment.employer.userId, payment.worker.userId],
+      SOCKET_EVENTS.paymentPaid,
+      updatedPayment,
+    );
 
     return updatedPayment;
   },
@@ -69,7 +79,10 @@ export const paymentService = {
   async confirmReceived(paymentId: number, workerId: number) {
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { employer: true },
+      include: {
+        employer: { select: { userId: true } },
+        worker: { select: { userId: true } },
+      },
     });
 
     if (!payment || payment.workerId !== workerId) {
@@ -85,14 +98,18 @@ export const paymentService = {
       },
     });
 
-    await prisma.notification.create({
-      data: {
-        userId: payment.employer.userId,
-        title: "Payment Completed",
-        message: "Worker confirmed payment receipt.",
-        type: "WORKER_CONFIRMED_PAID",
-      },
+    await notificationService.createNotification({
+      userId: payment.employer.userId,
+      title: "Payment Completed",
+      message: "Worker confirmed payment receipt.",
+      type: "WORKER_CONFIRMED_PAID",
     });
+
+    emitToUsers(
+      [payment.employer.userId, payment.worker.userId],
+      SOCKET_EVENTS.paymentConfirmed,
+      updatedPayment,
+    );
 
     return updatedPayment;
   }
