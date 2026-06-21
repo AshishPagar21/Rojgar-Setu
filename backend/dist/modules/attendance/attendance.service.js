@@ -187,13 +187,56 @@ exports.attendanceService = {
         if (attendance.status !== "PENDING_REVIEW") {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Only pending attendance can be approved");
         }
-        const updatedAttendance = await prisma_1.prisma.attendance.update({
-            where: { id: attendanceId },
-            data: {
-                status: "APPROVED",
-                reviewedAt: new Date(),
-            },
+        // Wrap the state updates in a secure database transaction
+        const updatedAttendance = await prisma_1.prisma.$transaction(async (tx) => {
+            // 1. Update the parent status state to APPROVED
+            const updated = await tx.attendance.update({
+                where: { id: attendanceId },
+                data: {
+                    status: "APPROVED",
+                    reviewedAt: new Date(),
+                },
+            });
+            // 2. Safely check if a payment record already exists to prevent duplicate rows
+            const existingPayment = await tx.payment.findFirst({
+                where: {
+                    jobId: attendance.jobId,
+                    workerId: attendance.workerId,
+                },
+            });
+            // 3. Create the missing payment item if it doesn't exist
+            //   if (!existingPayment) {
+            //     await tx.payment.create({
+            //       data: {
+            //         jobId: attendance.jobId,
+            //         workerId: attendance.workerId,
+            //         employerId: attendance.job.employerId,
+            //         amount: attendance.job.wage, // Pulls the wage directly from your job relation schema
+            //         status: "PENDING", // Default tracking status
+            //         employerConfirmed: false,
+            //         workerConfirmed: false,
+            //       },
+            //     });
+            //   }
+            if (!existingPayment) {
+                // 👇 Multiply total hours worked by the job's wage rate (fallback to 0 if totalHours is null)
+                const hoursWorked = attendance.totalHours || 0;
+                const calculatedWage = Math.round(hoursWorked * attendance.job.wage * 100) / 100;
+                await tx.payment.create({
+                    data: {
+                        jobId: attendance.jobId,
+                        workerId: attendance.workerId,
+                        employerId: attendance.job.employerId,
+                        amount: calculatedWage, // 👈 Saves the dynamic dynamic amount to the DB
+                        status: "PENDING",
+                        employerConfirmed: false,
+                        workerConfirmed: false,
+                    },
+                });
+            }
+            return updated;
         });
+        // Send down structural worker real-time notifications
         await notification_service_1.notificationService.createNotification({
             userId: attendance.worker.userId,
             title: "Attendance approved",

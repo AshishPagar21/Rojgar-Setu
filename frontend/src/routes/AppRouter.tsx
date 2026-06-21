@@ -29,6 +29,7 @@ import { SplashPage } from "../pages/SplashPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { PublicRoute } from "./PublicRoute";
 import { routePaths } from "./routePaths";
+import { RatingsPage } from "../pages/rating/Employer/RatingsPage";
 
 export const AppRouter = () => {
   return (
@@ -82,6 +83,13 @@ export const AppRouter = () => {
             <Route path="/jobs/assigned" element={<AssignedJobsPage />} />
             <Route path="/attendance/my" element={<AttendanceHistoryPage />} />
             <Route path="/payments/my" element={<PaymentHistoryPage />} />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute allowedRoles={["EMPLOYER", "WORKER"]} />
+            }
+          >
             <Route
               path="/ratings/my-received"
               element={<ReceivedRatingsPage />}
@@ -92,6 +100,13 @@ export const AppRouter = () => {
             <Route
               path={routePaths.dashboardAdmin}
               element={<AdminDashboardPage />}
+            />
+          </Route>
+
+           <Route element={<ProtectedRoute allowedRoles={["EMPLOYER"]} />}>
+            <Route
+              path={"/ratings/:jobId"}
+              element={<RatingsPage />}
             />
           </Route>
 

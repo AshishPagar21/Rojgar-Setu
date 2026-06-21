@@ -22,9 +22,6 @@ interface LocationPickerProps {
 export const LocationPicker = ({
   latitude,
   longitude,
-  locationLine1,
-  city,
-  landmarkArea,
   onLocationChange,
   onLocationLine1Change,
   onCityChange,
@@ -128,47 +125,6 @@ export const LocationPicker = ({
         }
       }
     }, 300);
-  };
-
-  // SEARCH LOCATION FROM CITY/LANDMARK
-  const searchLocation = async () => {
-    if (!locationLine1 && !city && !landmarkArea) return;
-
-    try {
-      const query = `${locationLine1} ${landmarkArea} ${city}`.trim();
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
-          query,
-        )}&limit=1`,
-      );
-
-      const data = await response.json();
-
-      if (data?.length > 0) {
-        const lat = parseFloat(data[0].lat);
-        const lng = parseFloat(data[0].lon);
-
-        setLocationName(
-          data[0].display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-        );
-
-        jobLatRef.current = lat;
-        jobLngRef.current = lng;
-        setJobLatitude(lat);
-        setJobLongitude(lng);
-        onLocationChange(lat, lng);
-
-        // MOVE MARKER
-        if (jobLocationMarker.current) {
-          jobLocationMarker.current.setLatLng([lat, lng]);
-        }
-
-        // MOVE MAP
-        map.current?.setView([lat, lng], 16);
-      }
-    } catch (err) {
-      console.error(err);
-    }
   };
 
   // INITIALIZE MAP

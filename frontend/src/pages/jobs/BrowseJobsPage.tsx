@@ -183,6 +183,8 @@ export const BrowseJobsPage = () => {
         <div className="space-y-3">
           {jobs.map((job) => (
             <div key={job.id} className="flex flex-col">
+
+
               <JobCard
                 id={job.id}
                 title={job.title}
@@ -196,6 +198,7 @@ export const BrowseJobsPage = () => {
                 employerName={
                   job.employerName || job.employer?.name || "Employer"
                 }
+                employerRating={job.employer?.rating ?? job.employerRating}
                 onViewDetails={(jobId) => navigate(`/jobs/open/${jobId}`)}
                 onApply={(jobId) => navigate(`/jobs/open/${jobId}`)}
               />

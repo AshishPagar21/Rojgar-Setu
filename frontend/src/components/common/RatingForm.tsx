@@ -33,7 +33,6 @@ export const RatingForm = ({
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -42,8 +41,6 @@ export const RatingForm = ({
       reviewText: "",
     },
   });
-
-  const selectedRating = watch("ratingValue");
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
@@ -58,6 +55,7 @@ export const RatingForm = ({
       });
       onSuccess?.();
     } catch (err) {
+
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
@@ -70,21 +68,16 @@ export const RatingForm = ({
         <label className="block text-sm font-medium text-slate-700 mb-2">
           Rating
         </label>
-        <div className="flex gap-2">
-          {[1, 2, 3, 4, 5].map((value) => (
-            <label key={value} className="cursor-pointer">
-              <input
-                type="radio"
-                value={value}
-                {...register("ratingValue", { valueAsNumber: true })}
-                className="sr-only"
-              />
-              <span className="text-4xl">
-                {value <= selectedRating ? "?" : "?"}
-              </span>
-            </label>
-          ))}
-        </div>
+        <select
+          className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-base outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-100"
+          {...register("ratingValue", { valueAsNumber: true })}
+        >
+          <option value={1}>⭐ 1</option>
+          <option value={2}>⭐⭐ 2</option>
+          <option value={3}>⭐⭐⭐ 3</option>
+          <option value={4}>⭐⭐⭐⭐ 4</option>
+          <option value={5}>⭐⭐⭐⭐⭐ 5</option>
+        </select>
         {errors.ratingValue && (
           <p className="mt-1 text-xs text-red-600">
             {errors.ratingValue.message}

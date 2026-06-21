@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { Button } from "../../components/common/Button";
+import { RatingPopup } from "../../components/common/RatingPopup";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { useAuth } from "../../hooks/useAuth";
@@ -14,6 +15,7 @@ import { paymentService } from "../../modules/payment/payment.service"; // 👈 
 import { socketService } from "../../services/socket.service";
 import { getErrorMessage } from "../../utils/helpers";
 import { getCurrentLocation } from "../../utils/geolocation";
+import { RatingForm } from "../../components/common/RatingForm";
 
 const extractLocation = (description?: string | null) => {
   if (!description) return undefined;
@@ -23,11 +25,6 @@ const extractLocation = (description?: string | null) => {
 
 const cleanDescription = (description?: string | null) =>
   (description ?? "").replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
-
-const getSelectedWorkers = (job: any) =>
-  (job?.jobApplications ?? []).filter(
-    (application: any) => application.status === "SELECTED",
-  );
 
 export const WorkerJobDetailsPage = () => {
   const { jobId } = useParams<{ jobId: string }>();
@@ -39,6 +36,9 @@ export const WorkerJobDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [action, setAction] = useState<string>();
+  const [showEmployerRatingForm, setShowEmployerRatingForm] = useState(false);
+  const [hasAutoOpenedRatingPrompt, setHasAutoOpenedRatingPrompt] =
+    useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -252,6 +252,24 @@ export const WorkerJobDetailsPage = () => {
     }
   };
 
+  const hasCheckedIn = attendance?.checkInTime;
+  const hasCheckedOut = attendance?.checkOutTime;
+  const attendanceStatus = attendance?.status;
+  const canRateEmployer = Boolean(
+    hasCheckedIn ||
+      hasCheckedOut ||
+      attendanceStatus === "APPROVED" ||
+      attendanceStatus === "COMPLETED" ||
+      payment?.status === "COMPLETED",
+  );
+
+  useEffect(() => {
+    if (canRateEmployer && job?.employer?.userId && !hasAutoOpenedRatingPrompt) {
+      setShowEmployerRatingForm(true);
+      setHasAutoOpenedRatingPrompt(true);
+    }
+  }, [canRateEmployer, job?.employer?.userId, hasAutoOpenedRatingPrompt]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -268,9 +286,6 @@ export const WorkerJobDetailsPage = () => {
     );
   }
 
-  const hasCheckedIn = attendance?.checkInTime;
-  const hasCheckedOut = attendance?.checkOutTime;
-  const attendanceStatus = attendance?.status;
 
   return (
     <div className="space-y-6">
@@ -341,6 +356,55 @@ export const WorkerJobDetailsPage = () => {
           <StatusBadge status={application.status} />
         </div>
       )}
+
+
+      {application?.status === "COMPLETED" && (
+        <div className="space-y-4 rounded-panel bg-white p-5 shadow-panel">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">
+                Employer Review
+              </p>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Rate {job.employer.name}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Share feedback about the employer's behavior, communication,
+                and job handling.
+              </p>
+            </div>
+            {!showEmployerRatingForm && (
+              <Button
+                variant="secondary"
+                onClick={() => setShowEmployerRatingForm(true)}
+              >
+                Rate Employer
+              </Button>
+            )}
+          </div>
+
+          <RatingPopup
+            open={showEmployerRatingForm}
+            title={`Rate ${job.employer.name}`}
+            subtitle="Share feedback about the employer's behavior, communication, and job handling."
+            jobId={Number(jobId)}
+            toUserId={job.employer.userId}
+            onClose={() => setShowEmployerRatingForm(false)}
+            onSuccess={() => {
+              toast.success("Rating submitted successfully");
+              setShowEmployerRatingForm(false);
+            }}
+          />
+        </div>
+      )}
+
+
+
+
+
+
+
+
 
       {/* Attendance Metrics Block */}
       {application?.status === "SELECTED" && attendance && (
@@ -473,6 +537,14 @@ export const WorkerJobDetailsPage = () => {
           </>
         )}
       </div>
+
+      
+
+
+
+      
+
+      
     </div>
   );
 };

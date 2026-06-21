@@ -13,6 +13,11 @@ exports.createJobSchema = zod_1.z.object({
         jobDate: zod_1.z.string().refine((date) => !isNaN(Date.parse(date)), {
             message: "Invalid date format",
         }),
+        expectedStartTime: zod_1.z.string().min(1, "Start time is required"),
+        expectedEndTime: zod_1.z.string().min(1, "End time is required"),
+        expectedWorkingHours: zod_1.z
+            .number()
+            .positive("Working hours must be greater than 0"),
         requiredWorkers: zod_1.z
             .number()
             .int()

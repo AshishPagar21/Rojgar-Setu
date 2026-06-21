@@ -106,6 +106,7 @@ exports.jobApplicationService = {
                 worker: {
                     select: {
                         id: true,
+                        userId: true,
                         name: true,
                         age: true,
                         gender: true,

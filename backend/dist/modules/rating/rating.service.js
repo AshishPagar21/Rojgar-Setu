@@ -10,11 +10,9 @@ exports.ratingService = {
      */
     async createRating(fromUserId, payload) {
         const { jobId, toUserId, ratingValue, reviewText } = payload;
-        // Validate rating value
         if (ratingValue < 1 || ratingValue > 5) {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Rating value must be between 1 and 5");
         }
-        // Verify job exists and that the payment flow has completed for the participant pair
         const job = await prisma_1.prisma.job.findUnique({
             where: { id: jobId },
             include: {
@@ -25,7 +23,6 @@ exports.ratingService = {
         if (!job) {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.NOT_FOUND, "Job not found");
         }
-        // Verify rater and ratee are valid users
         const fromUserRecord = await prisma_1.prisma.user.findUnique({
             where: { id: fromUserId },
         });
@@ -54,22 +51,24 @@ exports.ratingService = {
         else if (fromUserRecord.role === "WORKER" &&
             toUserRecord.role === "EMPLOYER") {
             const workerApplication = job.jobApplications.find((app) => app.workerId === fromWorker?.id && app.status !== "REJECTED");
-            const completedPayment = job.payments.find((payment) => payment.workerId === fromWorker?.id &&
-                payment.employerId === toEmployer?.id &&
-                payment.status === "COMPLETED");
-            if (!workerApplication || !completedPayment) {
-                throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "Payment must be completed before rating");
+            const workerAttendance = await prisma_1.prisma.attendance.findFirst({
+                where: {
+                    jobId,
+                    workerId: fromWorker?.id,
+                    checkInTime: { not: null },
+                },
+            });
+            const jobCompleted = workerApplication?.status === "COMPLETED";
+            if (!workerApplication || (!workerAttendance && !jobCompleted)) {
+                throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "You can rate the employer after check-in or once the job is completed");
+            }
+            if (job.employerId !== toEmployer?.id) {
+                throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "Invalid rating relationship");
             }
         }
         else {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "Invalid rating relationship");
         }
-        if (fromUserRecord.role === "WORKER" &&
-            toUserRecord.role === "EMPLOYER" &&
-            job.employerId !== toEmployer?.id) {
-            throw new response_1.ApiError(constants_1.HTTP_STATUS.FORBIDDEN, "Invalid rating relationship");
-        }
-        // Check for duplicate rating
         const existingRating = await prisma_1.prisma.rating.findFirst({
             where: {
                 jobId,
@@ -80,7 +79,6 @@ exports.ratingService = {
         if (existingRating) {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "You have already rated this user for this job");
         }
-        // Create rating
         const rating = await prisma_1.prisma.rating.create({
             data: {
                 jobId,
@@ -90,7 +88,6 @@ exports.ratingService = {
                 reviewText,
             },
         });
-        // Update average rating and totalRatings for the rated user
         const targetUser = await prisma_1.prisma.user.findUnique({
             where: { id: toUserId },
         });
@@ -167,7 +164,12 @@ exports.ratingService = {
                     select: {
                         id: true,
                         title: true,
+                        category: true,
                         jobDate: true,
+                        city: true,
+                        landmark: true,
+                        wage: true,
+                        status: true,
                     },
                 },
             },

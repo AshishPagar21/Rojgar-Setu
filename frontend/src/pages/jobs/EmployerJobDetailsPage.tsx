@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import toast from "react-hot-toast";
 
 import { Button } from "../../components/common/Button";
+import { RatingPopup } from "../../components/common/RatingPopup";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { attendanceService } from "../../modules/attendance/attendance.service";
@@ -19,7 +21,7 @@ const cleanDescription = (description: string) =>
   description.replace(/\n*\n*Location:\s*[^\n]+/i, "").trim();
 
 const getSelectedApplicants = (applicants: any[]) =>
-  applicants.filter((applicant) => applicant.status === "SELECTED");
+  applicants.filter((applicant) => applicant?.status === "SELECTED");
 
 export const EmployerJobDetailsPage = () => {
   const { jobId } = useParams<{ jobId: string }>();
@@ -30,6 +32,13 @@ export const EmployerJobDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [action, setAction] = useState<string>();
+  const [showWorkerRatingPopup, setShowWorkerRatingPopup] = useState(false);
+  const [activeWorkerRatingTarget, setActiveWorkerRatingTarget] = useState<{
+    userId: number;
+    name: string;
+  } | null>(null);
+  const [hasAutoOpenedRatingPrompt, setHasAutoOpenedRatingPrompt] =
+    useState(false);
 
   const refreshData = async (jobNumber: number) => {
     const jobData = await jobService.getJobById(jobNumber);
@@ -191,6 +200,36 @@ export const EmployerJobDetailsPage = () => {
   };
 
   const selectedApplicants = getSelectedApplicants(applicants);
+  const canRateWorkers =
+    job?.status === "COMPLETED" ||
+    selectedApplicants.some((applicant) => applicant?.status === "COMPLETED");
+
+  useEffect(() => {
+    if (
+      canRateWorkers &&
+      selectedApplicants.length > 0 &&
+      !activeWorkerRatingTarget &&
+      !hasAutoOpenedRatingPrompt
+    ) {
+      const firstRateableApplicant = selectedApplicants.find(
+        (applicant) => applicant.worker?.userId,
+      );
+
+      if (firstRateableApplicant) {
+        setActiveWorkerRatingTarget({
+          userId: firstRateableApplicant.worker.userId,
+          name: firstRateableApplicant.worker.name,
+        });
+        setShowWorkerRatingPopup(true);
+        setHasAutoOpenedRatingPrompt(true);
+      }
+    }
+  }, [
+    activeWorkerRatingTarget,
+    canRateWorkers,
+    hasAutoOpenedRatingPrompt,
+    selectedApplicants,
+  ]);
 
   if (loading) {
     return (
@@ -267,8 +306,29 @@ export const EmployerJobDetailsPage = () => {
         )}
 
         <hr className="my-4" />
+        
 
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs text-slate-600">Applied</p>
+            <p className="text-2xl font-bold text-slate-900">
+              {applicants.filter((a) => a?.status === "APPLIED").length}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-600">Selected</p>
+            <p className="text-2xl font-bold text-slate-900">
+              {applicants.filter((a) => a?.status === "SELECTED").length}
+            </p>
+          </div>
+        </div>
+
+                <hr className="my-4" />
+
+
+
+         {job.status !== "COMPLETED" ? (
+          <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-slate-600">Applied</p>
             <p className="text-2xl font-bold text-slate-900">
@@ -282,6 +342,15 @@ export const EmployerJobDetailsPage = () => {
             </p>
           </div>
         </div>
+        ):
+          <div>
+            <p className="text-sm font-medium text-slate-900">Workers</p>
+            <p className="mt-2 text-sm text-slate-700">
+               <Link to={`/ratings/${jobId}`}>Click here To see And Rate Workers</Link>
+            </p>
+            
+          </div>
+        }
 
         {selectedApplicants.length > 0 && (
           <>
@@ -299,6 +368,8 @@ export const EmployerJobDetailsPage = () => {
                   const canReview = attendance?.status === "PENDING_REVIEW";
                   const canRaiseDispute =
                     attendance?.status === "ISSUE_REPORTED";
+                  const canRateWorker =
+                    canRateWorkers && Boolean(selectedApplicant.worker?.userId);
 
                   return (
                     <div
@@ -382,6 +453,21 @@ export const EmployerJobDetailsPage = () => {
                         >
                           Raise Dispute
                         </Button>
+                        {canRateWorker && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setActiveWorkerRatingTarget({
+                                userId: selectedApplicant.worker.userId,
+                                name:
+                                  selectedApplicant.worker?.name ?? "Worker",
+                              });
+                              setShowWorkerRatingPopup(true);
+                            }}
+                          >
+                            Rate Worker
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -439,6 +525,19 @@ export const EmployerJobDetailsPage = () => {
           </Button>
         )}
       </div>
+
+      <RatingPopup
+        open={showWorkerRatingPopup && Boolean(activeWorkerRatingTarget)}
+        title={`Rate ${activeWorkerRatingTarget?.name ?? "Worker"}`}
+        subtitle="Share feedback about the worker's conduct, reliability, and work quality."
+        jobId={Number(jobId)}
+        toUserId={activeWorkerRatingTarget?.userId ?? 0}
+        onClose={() => setShowWorkerRatingPopup(false)}
+        onSuccess={() => {
+          toast.success("Rating submitted successfully");
+          setShowWorkerRatingPopup(false);
+        }}
+      />
     </div>
   );
 };

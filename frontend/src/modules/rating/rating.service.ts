@@ -22,4 +22,13 @@ export const ratingService = {
     const response = await apiClient.get(`/ratings/job/${jobId}`);
     return response.data.data;
   },
+
+  async getEligibleWorkersForRating(jobId: number) {
+    const response = await apiClient.get(
+      `/ratings/jobs/${jobId}/eligible-workers`,
+    );
+
+    return response.data.data;
+  },
 };
+
