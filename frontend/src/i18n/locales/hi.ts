@@ -463,6 +463,16 @@ const hi = {
     active: "सक्रिय",
     inactive: "निष्क्रिय",
   },
+  nav: {
+    home: "होम",
+    findWork: "काम खोजें",
+    applied: "आवेदन",
+    postJob: "नौकरी पोस्ट करें",
+    myJobs: "मेरी नौकरियां",
+    applicants: "आवेदक",
+    users: "यूज़र्स",
+    admin: "एडमिन",
+  },
 };
 
 export default hi;

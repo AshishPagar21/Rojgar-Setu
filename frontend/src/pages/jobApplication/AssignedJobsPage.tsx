@@ -113,34 +113,8 @@ export const AssignedJobsPage = () => {
     }
   };
 
-  const handleRaiseDispute = async (job: any, attendance: any) => {
-    const reason = window.prompt(t("jobDetails.enterDisputeReason"));
-    if (!reason?.trim()) {
-      return;
-    }
-
-    const description =
-      window.prompt(t("jobDetails.enterDisputeDescription")) ?? "";
-
-    if (!description.trim()) {
-      setError(t("jobDetails.disputeDescRequired"));
-      return;
-    }
-
-    try {
-      setAction(`dispute-${job.id}`);
-      await disputeService.createDispute({
-        jobId: job.id,
-        attendanceId: attendance?.id,
-        reason: reason.trim(),
-        description: description.trim(),
-      });
-    } catch (err) {
-      setError(t("jobDetails.failedToCreateDispute"));
-      console.error(err);
-    } finally {
-      setAction(undefined);
-    }
+  const handleRaiseDispute = (job: any, _attendance: any) => {
+    navigate(`/jobs/open/${job.jobId}`);
   };
 
   if (loading) {

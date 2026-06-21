@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { MapPin, AlertTriangle } from "lucide-react";
 
 import { JobCard } from "../../components/common/JobCard";
 import { PageHeader } from "../../components/common/PageHeader";
@@ -137,14 +138,16 @@ export const BrowseJobsPage = () => {
       <PageHeader title={t("jobs.findWorkTitle")} subtitle={t("jobs.findWorkSubtitle")} />
 
       {workerLocation && (
-        <div className="rounded bg-blue-50 p-3 text-sm text-blue-700">
-          📍 {t("jobs.showingJobsWithin", { radius })}
+        <div className="rounded-xl bg-blue-50 p-3 text-sm text-blue-700 flex items-center gap-2">
+          <MapPin size={15} className="flex-shrink-0" />
+          {t("jobs.showingJobsWithin", { radius })}
         </div>
       )}
 
       {locationError && (
-        <div className="rounded bg-yellow-50 p-3 text-sm text-yellow-700">
-          ⚠️ {locationError} - {t("jobs.showingAllJobs")}
+        <div className="rounded-xl bg-yellow-50 p-3 text-sm text-yellow-700 flex items-center gap-2">
+          <AlertTriangle size={15} className="flex-shrink-0" />
+          {locationError} - {t("jobs.showingAllJobs")}
         </div>
       )}
 
@@ -184,29 +187,29 @@ export const BrowseJobsPage = () => {
       ) : (
         <div className="space-y-3">
           {jobs.map((job) => (
-            <div key={job.id} className="flex flex-col">
-              <JobCard
-                id={job.id}
-                title={job.title}
-                description={cleanDescription(job.description)}
-                location={extractLocation(job.description)}
-                category={job.category}
-                wage={job.wage}
-                jobDate={job.jobDate}
-                requiredWorkers={job.requiredWorkers}
-                status={job.status}
-                employerName={
-                  job.employerName || job.employer?.name || "Employer"
-                }
-                onViewDetails={(jobId) => navigate(`/jobs/open/${jobId}`)}
-                onApply={(jobId) => navigate(`/jobs/open/${jobId}`)}
-              />
-              {job.distance !== null && (
-                <div className="px-4 pb-2 text-xs text-slate-500">
-                  📍 {t("jobs.away", { distance: job.distance.toFixed(1) })}
-                </div>
-              )}
-            </div>
+            <JobCard
+              key={job.id}
+              id={job.id}
+              title={job.title}
+              description={cleanDescription(job.description)}
+              locationLine1={job.locationLine1}
+              city={job.city}
+              landmark={job.landmark}
+              location={extractLocation(job.description)}
+              category={job.category}
+              wage={job.wage}
+              jobDate={job.jobDate}
+              expectedStartTime={job.expectedStartTime}
+              expectedEndTime={job.expectedEndTime}
+              expectedWorkingHours={job.expectedWorkingHours}
+              requiredWorkers={job.requiredWorkers}
+              status={job.status}
+              employerName={job.employerName || job.employer?.name || "Employer"}
+              employerRating={job.employer?.rating}
+              distance={job.distance}
+              onViewDetails={(jobId) => navigate(`/jobs/open/${jobId}`)}
+              onApply={(jobId) => navigate(`/jobs/open/${jobId}`)}
+            />
           ))}
         </div>
       )}

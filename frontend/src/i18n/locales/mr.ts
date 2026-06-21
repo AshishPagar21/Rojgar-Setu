@@ -463,6 +463,16 @@ const mr = {
     active: "सक्रिय",
     inactive: "निष्क्रिय",
   },
+  nav: {
+    home: "होम",
+    findWork: "काम शोधा",
+    applied: "अर्ज",
+    postJob: "नोकरी पोस्ट करा",
+    myJobs: "माझ्या नोकऱ्या",
+    applicants: "अर्जदार",
+    users: "वापरकर्ते",
+    admin: "अॅडमिन",
+  },
 };
 
 export default mr;

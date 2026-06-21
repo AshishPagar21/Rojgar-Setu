@@ -5,11 +5,17 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: "#eef5ff",
+          50:  "#eef5ff",
           100: "#d9e9ff",
+          150: "#c4dcff",
+          200: "#a8caff",
+          300: "#75abff",
+          400: "#4589f5",
           500: "#1d6fe9",
           600: "#1559bf",
           700: "#12499d",
+          800: "#0f3a7d",
+          900: "#0b2d61",
         },
       },
       borderRadius: {

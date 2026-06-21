@@ -49,3 +49,33 @@ export interface ApiEnvelope<T> {
   message: string;
   data: T;
 }
+
+export type DisputeStatus = "OPEN" | "COUNTERED" | "ESCALATED" | "RESOLVED" | "REJECTED";
+
+export interface Dispute {
+  id: number;
+  jobId: number;
+  attendanceId: number;
+  workerId: number | null;
+  employerId: number | null;
+  raisedById: number;
+  raisedByType: "EMPLOYER" | "WORKER";
+  reason: string;
+  initialDescription: string;
+  counterDescription: string | null;
+  status: DisputeStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AttendanceRecord {
+  id: number;
+  jobId: number;
+  workerId: number;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  totalHours: number | null;
+  notes: string | null;
+  status: string;
+  disputes?: Dispute[];
+}

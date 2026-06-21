@@ -86,6 +86,14 @@ export const AttendanceHistoryPage = () => {
                     </p>
                   </>
                 )}
+                {record.disputes && record.disputes.length > 0 && (
+                  <div className="mt-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-2.5 py-1 inline-flex items-center gap-1.5">
+                    <span>⚖️</span>
+                    <span>
+                      Dispute: {record.disputes[0].status} ({record.disputes[0].reason})
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           ))}

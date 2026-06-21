@@ -26,6 +26,7 @@ export const SOCKET_EVENTS = {
   notificationNew: "notification:new",
   disputeCreated: "dispute:created",
   disputeUpdated: "dispute:updated",
+  disputeCountered: "dispute:countered",
 } as const;
 
 const extractToken = (value?: string): string | null => {

@@ -438,6 +438,9 @@ export const attendanceService = {
     return prisma.attendance.findMany({
       where: { workerId },
       include: {
+        disputes: {
+          orderBy: { createdAt: "desc" },
+        },
         job: {
           include: {
             employer: {
@@ -476,6 +479,9 @@ export const attendanceService = {
     return prisma.attendance.findMany({
       where: { jobId },
       include: {
+        disputes: {
+          orderBy: { createdAt: "desc" },
+        },
         worker: {
           select: {
             id: true,

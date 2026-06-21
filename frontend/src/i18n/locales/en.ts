@@ -463,6 +463,16 @@ const en = {
     active: "Active",
     inactive: "Inactive",
   },
+  nav: {
+    home: "Home",
+    findWork: "Find Work",
+    applied: "Applied",
+    postJob: "Post Job",
+    myJobs: "My Jobs",
+    applicants: "Applicants",
+    users: "Users",
+    admin: "Admin",
+  },
 };
 
 export default en;

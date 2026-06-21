@@ -84,10 +84,16 @@ export const MyJobsPage = () => {
               id={job.id}
               title={job.title}
               description={cleanDescription(job.description)}
+              locationLine1={job.locationLine1}
+              city={job.city}
+              landmark={job.landmark}
               location={extractLocation(job.description)}
               category={job.category}
               wage={job.wage}
               jobDate={job.jobDate}
+              expectedStartTime={job.expectedStartTime}
+              expectedEndTime={job.expectedEndTime}
+              expectedWorkingHours={job.expectedWorkingHours}
               requiredWorkers={job.requiredWorkers}
               status={job.status}
               employerName={job.employerName || job.employer?.name || "You"}
