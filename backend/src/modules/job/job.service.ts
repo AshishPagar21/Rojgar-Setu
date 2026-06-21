@@ -467,6 +467,33 @@ export const jobService = {
       );
     }
 
+    // Check if job starts in less than 10 hours
+    const getJobStartDateTime = (jobDate: Date, expectedStartTime: string): Date => {
+      const start = new Date(jobDate);
+      const [hours, minutes] = (expectedStartTime || "00:00").split(":").map(Number);
+      start.setHours(hours || 0, minutes || 0, 0, 0);
+      return start;
+    };
+
+    const jobStart = getJobStartDateTime(job.jobDate, job.expectedStartTime);
+    const now = new Date();
+
+    if (now >= jobStart) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        "Cannot edit a job after it has started or during its scheduled time",
+      );
+    }
+
+    const hoursRemaining = (jobStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    if (hoursRemaining < 10) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        "Cannot edit job within 10 hours of job start time",
+      );
+    }
+
     if (!payload.latitude || !payload.longitude) {
       throw new ApiError(
         HTTP_STATUS.BAD_REQUEST,

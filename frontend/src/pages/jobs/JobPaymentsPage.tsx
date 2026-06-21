@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 
 import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
@@ -13,6 +14,7 @@ import { socketService } from "../../services/socket.service";
 export const JobPaymentsPage = () => {
   const { t } = useTranslation();
   const { jobId } = useParams<{ jobId: string }>();
+  const navigate = useNavigate();
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -106,8 +108,20 @@ export const JobPaymentsPage = () => {
     .filter((p) => p.status === "COMPLETED")
     .reduce((sum, p) => sum + p.amount, 0);
 
+  const allPaymentsDone = payments.length > 0 && payments.every((p) => p.status === "COMPLETED");
+
   return (
     <div className="space-y-6">
+      <div className="flex items-center">
+        <button
+          onClick={() => navigate(`/jobs/${jobId}`)}
+          className="flex items-center gap-1.5 text-xs font-extrabold text-indigo-650 hover:text-indigo-850 transition-colors uppercase tracking-wider bg-slate-50 border border-slate-150 px-3 py-1.5 rounded-xl shadow-sm"
+        >
+          <ArrowLeft size={14} strokeWidth={3} />
+          {t("common.back", "Back to Job")}
+        </button>
+      </div>
+
       <PageHeader
         title={t("payment.jobPaymentsTitle")}    
         subtitle={t("payment.jobPaymentsSubtitle")}
@@ -225,6 +239,25 @@ export const JobPaymentsPage = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {allPaymentsDone && (
+        <div className="rounded-panel bg-emerald-50 border border-emerald-100 p-5 shadow-panel flex flex-col items-center text-center space-y-3">
+          <CheckCircle2 className="text-emerald-600" size={32} />
+          <div>
+            <p className="font-extrabold text-emerald-950">{t("payment.allPaymentsDoneTitle", "All Payments Completed")}</p>
+            <p className="text-xs text-emerald-700 mt-1">
+              {t("payment.allPaymentsDoneDesc", "All workers have been paid and payments are confirmed. You can now mark this job as completed in the job details.")}
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            onClick={() => navigate(`/jobs/${jobId}`)}
+            className="w-full sm:w-auto text-xs px-5 py-2.5"
+          >
+            {t("payment.backToJobDetails", "Back to Job Details")}
+          </Button>
         </div>
       )}
     </div>

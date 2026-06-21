@@ -62,6 +62,13 @@ const formatDate = (dateStr: string) => {
   }
 };
 
+const getJobStartDateTime = (jobDate: string, expectedStartTime: string): Date => {
+  const start = new Date(jobDate);
+  const [hours, minutes] = (expectedStartTime || "00:00").split(":").map(Number);
+  start.setHours(hours || 0, minutes || 0, 0, 0);
+  return start;
+};
+
 const getSelectedApplicants = (applicants: any[]) =>
   applicants.filter((a) => a.status === "SELECTED" || a.status === "COMPLETED");
 
@@ -303,6 +310,12 @@ export const EmployerJobDetailsPage = () => {
       </div>
     );
   }
+
+  const jobStart = getJobStartDateTime(job.jobDate, job.expectedStartTime);
+  const now = new Date();
+  const isStarted = now >= jobStart;
+  const hoursRemaining = (jobStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+  const canEdit = now < jobStart && hoursRemaining >= 10;
 
   const locationDisplay = buildLocationDisplay(job);
   const description     = cleanDescription(job.description);
@@ -550,15 +563,18 @@ export const EmployerJobDetailsPage = () => {
               <Users size={16} />
               {t("jobDetails.viewApplicants", { count: applicants.length })}
             </Button>
-            <Button 
-              fullWidth 
-              variant="outline" 
-              onClick={() => navigate(`/jobs/${jobId}/edit`)} 
-              className="border-slate-300 text-slate-705 hover:bg-slate-50 flex items-center justify-center gap-2"
-            >
-              <Clock size={16} />
-              {t("jobDetails.editJob", "Edit Job")}
-            </Button>
+            {!isStarted && (
+              <Button 
+                fullWidth 
+                variant="outline" 
+                onClick={() => navigate(`/jobs/${jobId}/edit`)} 
+                disabled={!canEdit}
+                className="border-slate-300 text-slate-705 hover:bg-slate-50 flex items-center justify-center gap-2"
+              >
+                <Clock size={16} />
+                {t("jobDetails.editJob", "Edit Job")}
+              </Button>
+            )}
             <Button 
               fullWidth 
               variant="outline" 
@@ -582,15 +598,18 @@ export const EmployerJobDetailsPage = () => {
               <CreditCard size={16} />
               {t("jobDetails.viewPayments")}
             </Button>
-            <Button 
-              fullWidth 
-              variant="outline" 
-              onClick={() => navigate(`/jobs/${jobId}/edit`)} 
-              className="border-slate-300 text-slate-705 hover:bg-slate-50 flex items-center justify-center gap-2"
-            >
-              <Clock size={16} />
-              {t("jobDetails.editJob", "Edit Job")}
-            </Button>
+            {!isStarted && (
+              <Button 
+                fullWidth 
+                variant="outline" 
+                onClick={() => navigate(`/jobs/${jobId}/edit`)} 
+                disabled={!canEdit}
+                className="border-slate-300 text-slate-705 hover:bg-slate-50 flex items-center justify-center gap-2"
+              >
+                <Clock size={16} />
+                {t("jobDetails.editJob", "Edit Job")}
+              </Button>
+            )}
             <div className="space-y-1.5">
               <Button
                 fullWidth

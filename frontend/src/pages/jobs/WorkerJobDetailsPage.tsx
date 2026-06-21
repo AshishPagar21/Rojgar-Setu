@@ -566,11 +566,6 @@ export const WorkerJobDetailsPage = () => {
             >
               {t("jobDetails.withdrawApplication", "Withdraw Application")}
             </Button>
-            {!canWithdraw && (
-              <p className="text-[10px] text-center text-rose-600 font-bold uppercase tracking-wider">
-                {t("jobDetails.withdrawLockedMessage", "Cannot withdraw within 10 hours of job start")}
-              </p>
-            )}
           </div>
         )}
 
@@ -601,11 +596,6 @@ export const WorkerJobDetailsPage = () => {
             >
               {t("jobDetails.withdrawSelection", "Withdraw from Selection")}
             </Button>
-            {!canWithdraw && (
-              <p className="text-[10px] text-center text-rose-600 font-bold uppercase tracking-wider">
-                {t("jobDetails.withdrawLockedMessage", "Cannot withdraw within 10 hours of job start")}
-              </p>
-            )}
           </div>
         )}
 
@@ -668,7 +658,7 @@ export const WorkerJobDetailsPage = () => {
                   );
                 })()}
               </>
-            ) : (
+            ) : payment?.employerConfirmed ? (
               <Button
                 fullWidth
                 onClick={handleConfirmPaymentReceived}
@@ -678,6 +668,11 @@ export const WorkerJobDetailsPage = () => {
                 <IndianRupee size={16} />
                 {t("jobDetails.markPaymentReceived")}
               </Button>
+            ) : (
+              <div className="text-center py-3 px-4 text-xs font-bold text-amber-700 bg-amber-50/50 rounded-2xl flex items-center justify-center gap-2 border border-amber-100/60">
+                <Clock size={14} className="text-amber-600 flex-shrink-0 animate-pulse" />
+                {t("payment.waitingEmployerMarkPaid", "Waiting for employer to send payment")}
+              </div>
             )}
           </div>
         )}

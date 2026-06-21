@@ -21,11 +21,11 @@ exports.jobApplicationService = {
         if (job.status !== "OPEN") {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Job is not open for applications");
         }
-        // Check if worker is already selected or completed for any job on the same day
+        // Check if worker is already selected for any job on the same day
         const selectedApplicationsOnSameDay = await prisma_1.prisma.jobApplication.findFirst({
             where: {
                 workerId,
-                status: { in: ["SELECTED", "COMPLETED"] },
+                status: "SELECTED",
                 job: {
                     jobDate: job.jobDate,
                 },
@@ -35,7 +35,7 @@ exports.jobApplicationService = {
             },
         });
         if (selectedApplicationsOnSameDay) {
-            throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, `You cannot apply to this job because you are already selected/completed for another job ("${selectedApplicationsOnSameDay.job.title}") on this day.`);
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, `You cannot apply to this job because you are already selected for another job ("${selectedApplicationsOnSameDay.job.title}") on this day.`);
         }
         // Create application
         const application = await prisma_1.prisma.jobApplication.create({

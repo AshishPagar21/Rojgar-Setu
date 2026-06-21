@@ -26,11 +26,11 @@ export const jobApplicationService = {
       );
     }
 
-    // Check if worker is already selected or completed for any job on the same day
+    // Check if worker is already selected for any job on the same day
     const selectedApplicationsOnSameDay = await prisma.jobApplication.findFirst({
       where: {
         workerId,
-        status: { in: ["SELECTED", "COMPLETED"] },
+        status: "SELECTED",
         job: {
           jobDate: job.jobDate,
         },
@@ -43,7 +43,7 @@ export const jobApplicationService = {
     if (selectedApplicationsOnSameDay) {
       throw new ApiError(
         HTTP_STATUS.BAD_REQUEST,
-        `You cannot apply to this job because you are already selected/completed for another job ("${selectedApplicationsOnSameDay.job.title}") on this day.`,
+        `You cannot apply to this job because you are already selected for another job ("${selectedApplicationsOnSameDay.job.title}") on this day.`,
       );
     }
 
