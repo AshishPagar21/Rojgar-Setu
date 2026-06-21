@@ -221,12 +221,6 @@ function useNavItems(): NavItem[] {
         path: "/jobs/my",
         icon: (a) => <BriefcaseIcon active={a} />,
       },
-      {
-        id: "applicants",
-        label: t("nav.applicants", "Applicants"),
-        path: "/applicants",
-        icon: (a) => <UsersIcon active={a} />,
-      },
     ];
   }
 
