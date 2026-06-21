@@ -145,7 +145,7 @@ export const AppNavbar = () => {
           onClick={() => navigate(routePaths.root)}
           className="flex items-center gap-3 text-left"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-amber-500 text-white shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-800 text-white shadow-sm border border-indigo-500/20">
             <span className="text-lg font-black">R</span>
           </div>
           <div>
@@ -239,7 +239,7 @@ export const AppNavbar = () => {
                         setNotificationsOpen(false);
                         navigate(routePaths.notifications);
                       }}
-                      className="w-full rounded-2xl px-3 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
+                      className="w-full rounded-2xl px-3 py-3 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50"
                     >
                       {t("notifications.viewAll")}
                     </button>
@@ -310,7 +310,7 @@ export const AppNavbar = () => {
                     </div>
                   </div>
 
-                  <div className="mt-2 rounded-2xl bg-brand-50 px-3 py-3">
+                  <div className="mt-2 rounded-2xl bg-indigo-50/50 border border-indigo-100/40 px-3 py-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       {t("common.quickActions")}
                     </p>
@@ -323,7 +323,7 @@ export const AppNavbar = () => {
                             setMenuOpen(false);
                             action.onClick();
                           }}
-                          className="block w-full rounded-xl px-3 py-2 text-left text-sm text-brand-700 transition hover:bg-white"
+                          className="block w-full rounded-xl px-3 py-2 text-left text-sm text-indigo-700 transition hover:bg-white font-semibold"
                         >
                           {action.label}
                         </button>

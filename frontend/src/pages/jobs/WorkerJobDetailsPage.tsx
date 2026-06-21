@@ -65,43 +65,52 @@ const formatDate = (dateStr: string) => {
   }
 };
 
-/** Unified info tile — always brand blue, just different lightness */
 const InfoTile = ({
   icon,
   label,
   value,
-  shade = "light",
+  color = "indigo",
   colSpan2 = false,
 }: {
   icon: React.ReactNode;
   label: string;
   value: React.ReactNode;
-  shade?: "light" | "mid" | "strong";
+  color?: "indigo" | "amber" | "slate" | "emerald";
   colSpan2?: boolean;
 }) => {
-  const bg =
-    shade === "strong" ? "bg-brand-200" :
-    shade === "mid"    ? "bg-brand-100" :
-                         "bg-brand-50";
-  const labelColor =
-    shade === "strong" ? "text-brand-700" :
-    shade === "mid"    ? "text-brand-600" :
-                         "text-brand-500";
-  const valueColor =
-    shade === "strong" ? "text-brand-900" :
-    shade === "mid"    ? "text-brand-800" :
-                         "text-brand-700";
-  const iconColor =
-    shade === "strong" ? "text-brand-600" :
-    shade === "mid"    ? "text-brand-500" :
-                         "text-brand-400";
+  const colors = {
+    indigo: {
+      bg: "bg-indigo-50/50 border border-indigo-50/80",
+      label: "text-indigo-500",
+      value: "text-indigo-955",
+      icon: "text-indigo-650",
+    },
+    amber: {
+      bg: "bg-amber-50/50 border border-amber-50/80",
+      label: "text-amber-600",
+      value: "text-amber-955",
+      icon: "text-amber-650",
+    },
+    slate: {
+      bg: "bg-slate-50/80 border border-slate-100",
+      label: "text-slate-500",
+      value: "text-slate-800",
+      icon: "text-slate-400",
+    },
+    emerald: {
+      bg: "bg-emerald-50/50 border border-emerald-100/80",
+      label: "text-emerald-600",
+      value: "text-emerald-955",
+      icon: "text-emerald-600",
+    },
+  }[color];
 
   return (
-    <div className={`flex items-center gap-3 rounded-xl p-3 ${bg} ${colSpan2 ? "col-span-2" : ""}`}>
-      <div className={`flex-shrink-0 ${iconColor}`}>{icon}</div>
+    <div className={`flex items-center gap-3 rounded-2xl p-4 shadow-sm transition-all duration-200 hover:shadow-md ${colors.bg} ${colSpan2 ? "col-span-2" : ""}`}>
+      <div className={`flex-shrink-0 ${colors.icon}`}>{icon}</div>
       <div>
-        <p className={`text-[10px] font-semibold uppercase tracking-wide ${labelColor}`}>{label}</p>
-        <div className={`text-sm font-bold ${valueColor}`}>{value}</div>
+        <p className={`text-[9px] font-extrabold uppercase tracking-wider mb-0.5 leading-none ${colors.label}`}>{label}</p>
+        <div className={`text-sm font-extrabold tracking-tight ${colors.value}`}>{value}</div>
       </div>
     </div>
   );
@@ -301,17 +310,17 @@ export const WorkerJobDetailsPage = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
-        <Loader2 size={36} className="text-brand-500 animate-spin" />
-        <p className="text-slate-400 text-sm">{t("common.loading")}</p>
+        <Loader2 size={36} className="text-indigo-600 animate-spin" />
+        <p className="text-slate-400 text-sm font-semibold">{t("common.loading")}</p>
       </div>
     );
   }
 
   if (!job) {
     return (
-      <div className="rounded-2xl bg-white p-8 text-center border border-brand-100">
-        <SearchX size={40} className="text-brand-200 mx-auto mb-3" />
-        <p className="text-slate-600 font-medium">{t("jobDetails.jobNotFound")}</p>
+      <div className="rounded-3xl bg-white p-8 text-center border border-slate-100 shadow-sm">
+        <SearchX size={40} className="text-slate-200 mx-auto mb-3" />
+        <p className="text-slate-600 font-bold">{t("jobDetails.jobNotFound")}</p>
       </div>
     );
   }
@@ -339,47 +348,47 @@ export const WorkerJobDetailsPage = () => {
       />
 
       {error && (
-        <div className="rounded-xl bg-red-50 border border-red-100 p-4 text-sm text-red-700 flex items-center gap-2">
+        <div className="rounded-xl bg-red-50 border border-red-100 p-4 text-sm text-red-700 flex items-center gap-2 font-medium">
           <AlertTriangle size={15} className="flex-shrink-0" /> {error}
         </div>
       )}
 
       {/* ── Job Overview ── */}
-      <div className="bg-white rounded-2xl border border-brand-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
         {/* Accent bar */}
         <div className={`h-1.5 w-full ${
-          job.status === "OPEN"      ? "bg-gradient-to-r from-brand-400 to-brand-600" :
-          job.status === "ASSIGNED"  ? "bg-brand-700" :
-          job.status === "COMPLETED" ? "bg-brand-900" :
-                                       "bg-slate-300"
+          job.status === "OPEN"      ? "bg-gradient-to-r from-emerald-400 to-emerald-500" :
+          job.status === "ASSIGNED"  ? "bg-gradient-to-r from-amber-400 to-amber-500" :
+          job.status === "COMPLETED" ? "bg-gradient-to-r from-sky-400 to-sky-500" :
+                                       "bg-slate-350"
         }`} />
 
         <div className="p-5">
           {/* Status + Wage */}
           <div className="flex items-start justify-between mb-5">
             <div>
-              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-1">
+              <p className="text-[9px] text-slate-450 font-extrabold uppercase tracking-wider mb-1.5 leading-none">
                 {t("jobDetails.jobStatus")}
               </p>
-              <StatusBadge status={job.status} />
+              <StatusBadge status={job.status} size="lg" />
             </div>
             <div className="text-right">
-              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-1">
+              <p className="text-[9px] text-slate-450 font-extrabold uppercase tracking-wider mb-1.5 leading-none">
                 {t("jobDetails.wage")}
               </p>
-              <p className="text-3xl font-extrabold text-brand-600 flex items-center justify-end gap-0.5">
-                <IndianRupee size={22} strokeWidth={2.5} />
+              <p className="text-3xl font-black text-indigo-600 flex items-center justify-end gap-0.5 tracking-tight">
+                <IndianRupee size={20} strokeWidth={3} className="text-indigo-500" />
                 {job.wage}
               </p>
-              <p className="text-[10px] text-slate-400">{t("jobs.perDay", "per day")}</p>
+              <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-wide">{t("jobs.perDay", "per day")}</p>
             </div>
           </div>
 
-          {/* Info grid — all brand shades */}
+          {/* Info grid */}
           <div className="grid grid-cols-2 gap-3">
             <InfoTile
               colSpan2
-              shade="light"
+              color="amber"
               icon={<CalendarDays size={18} />}
               label={t("jobDetails.jobDate")}
               value={formatDate(job.jobDate)}
@@ -388,7 +397,7 @@ export const WorkerJobDetailsPage = () => {
             {job.expectedStartTime && job.expectedEndTime && (
               <InfoTile
                 colSpan2
-                shade="mid"
+                color="slate"
                 icon={<Clock size={18} />}
                 label={t("jobs.timing", "Work Timing")}
                 value={
@@ -403,13 +412,13 @@ export const WorkerJobDetailsPage = () => {
             )}
 
             <InfoTile
-              shade="strong"
+              color="slate"
               icon={<Users size={18} />}
               label={t("jobDetails.requiredWorkers")}
               value={job.requiredWorkers}
             />
             <InfoTile
-              shade="light"
+              color="slate"
               icon={<Tag size={18} />}
               label={t("jobs.category")}
               value={t(`jobs.categories.${job.category}`, job.category) as string}
@@ -417,44 +426,44 @@ export const WorkerJobDetailsPage = () => {
           </div>
 
           {/* Employer */}
-          <div className="mt-3 flex items-center gap-3 bg-brand-50 rounded-xl p-3">
-            <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center">
-              <User size={16} className="text-brand-500" />
+          <div className="mt-3 flex items-center gap-3 bg-indigo-50/30 border border-indigo-100/50 rounded-2xl p-4">
+            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center border border-indigo-100">
+              <User size={16} className="text-indigo-600" />
             </div>
             <div>
-              <p className="text-[10px] text-brand-500 font-semibold uppercase tracking-wide">
+              <p className="text-[9px] text-indigo-500 font-extrabold uppercase tracking-wider mb-0.5 leading-none">
                 {t("jobs.employer", "Posted By")}
               </p>
-              <p className="text-sm font-bold text-brand-800">{job.employer?.name ?? "–"}</p>
+              <p className="text-sm font-black text-indigo-950">{job.employer?.name ?? "–"}</p>
             </div>
             {job.employer?.rating > 0 && (
-              <div className="ml-auto flex items-center gap-1 bg-brand-100 px-2.5 py-1 rounded-full">
-                <Star size={12} className="text-brand-400 fill-brand-400" />
-                <span className="text-xs font-bold text-brand-700">{job.employer.rating.toFixed(1)}</span>
+              <div className="ml-auto flex items-center gap-1 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full">
+                <Star size={12} className="text-amber-550 fill-amber-400 text-amber-500" />
+                <span className="text-xs font-extrabold text-amber-700">{job.employer.rating.toFixed(1)}</span>
               </div>
             )}
           </div>
 
           {/* Location */}
           {locationDisplay && (
-            <div className="mt-3 flex items-start gap-3 bg-brand-50 border border-brand-100 rounded-xl p-3">
-              <MapPin size={17} className="text-brand-500 flex-shrink-0 mt-0.5" />
+            <div className="mt-3 flex items-start gap-3 bg-indigo-50/30 border border-indigo-100/50 rounded-2xl p-4">
+              <MapPin size={16} className="text-indigo-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-[10px] text-brand-500 font-semibold uppercase tracking-wide">
+                <p className="text-[9px] text-indigo-500 font-extrabold uppercase tracking-wider mb-0.5 leading-none">
                   {t("jobDetails.location")}
                 </p>
-                <p className="text-sm font-medium text-brand-800 leading-snug">{locationDisplay}</p>
+                <p className="text-xs font-semibold text-indigo-900 leading-snug">{locationDisplay}</p>
               </div>
             </div>
           )}
 
           {/* Description */}
           {description && (
-            <div className="mt-3">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+            <div className="mt-4">
+              <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">
                 {t("jobDetails.description")}
               </p>
-              <p className="text-sm text-slate-600 leading-relaxed bg-brand-50 rounded-xl p-3">{description}</p>
+              <p className="text-xs text-slate-600 leading-relaxed bg-slate-50/80 rounded-2xl p-4 border border-slate-100 font-medium">{description}</p>
             </div>
           )}
         </div>
@@ -462,21 +471,21 @@ export const WorkerJobDetailsPage = () => {
 
       {/* ── Application Status ── */}
       {application && (
-        <div className="bg-white rounded-2xl border border-brand-100 shadow-sm p-4">
-          <p className="text-[10px] font-semibold text-brand-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-            <ClipboardList size={13} />
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+          <p className="text-[9px] font-extrabold text-indigo-500 uppercase tracking-wider mb-2 flex items-center gap-1.5 leading-none">
+            <ClipboardList size={13} className="text-indigo-600" />
             {t("jobDetails.applicationStatus", "Application Status")}
           </p>
           <div className="flex items-center gap-3">
             <StatusBadge status={application.status} size="lg" />
             {application.status === "APPLIED" && (
-              <p className="text-sm text-slate-500">{t("jobDetails.applicationPending")}</p>
+              <p className="text-xs text-slate-500 font-medium">{t("jobDetails.applicationPending")}</p>
             )}
             {application.status === "SELECTED" && (
-              <p className="text-sm text-brand-600 font-medium">{t("jobDetails.youreSelected", "You've been selected!")}</p>
+              <p className="text-xs text-indigo-650 font-bold">{t("jobDetails.youreSelected", "You've been selected!")}</p>
             )}
             {application.status === "REJECTED" && (
-              <p className="text-sm text-slate-500">{t("jobDetails.applicationRejected")}</p>
+              <p className="text-xs text-rose-600 font-medium">{t("jobDetails.applicationRejected")}</p>
             )}
           </div>
         </div>
@@ -484,45 +493,45 @@ export const WorkerJobDetailsPage = () => {
 
       {/* ── Attendance ── */}
       {application?.status === "SELECTED" && attendance && (
-        <div className="bg-white rounded-2xl border border-brand-100 shadow-sm overflow-hidden">
-          <div className="bg-brand-600 px-4 py-3 flex items-center gap-2">
-            <Timer size={15} className="text-brand-100" />
-            <p className="text-white font-semibold text-sm">{t("attendance.status")}</p>
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="bg-indigo-600 px-4 py-3 flex items-center gap-2">
+            <Timer size={15} className="text-indigo-100" />
+            <p className="text-white font-bold text-sm">{t("attendance.status")}</p>
           </div>
-          <div className="p-4 space-y-3">
+          <div className="p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-500">{t("attendance.status")}</span>
-              <StatusBadge status={attendance?.status} />
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("attendance.status")}</span>
+              <StatusBadge status={attendance?.status} size="lg" />
             </div>
             {attendance?.checkInTime && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-1.5 text-slate-500">
-                  <LogIn size={14} className="text-brand-500" />
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5 text-slate-500 font-medium">
+                  <LogIn size={14} className="text-indigo-650" />
                   {t("jobDetails.checkIn", { time: "" })}
                 </span>
-                <span className="font-semibold text-brand-700">
+                <span className="font-extrabold text-indigo-950">
                   {new Date(attendance.checkInTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
             )}
             {attendance?.checkOutTime && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-1.5 text-slate-500">
-                  <LogOut size={14} className="text-brand-400" />
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5 text-slate-500 font-medium">
+                  <LogOut size={14} className="text-indigo-500" />
                   {t("jobDetails.checkOut", { time: "" })}
                 </span>
-                <span className="font-semibold text-brand-700">
+                <span className="font-extrabold text-indigo-950">
                   {new Date(attendance.checkOutTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
             )}
             {attendance?.totalHours && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-1.5 text-slate-500">
-                  <Timer size={14} className="text-brand-400" />
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5 text-slate-500 font-medium">
+                  <Timer size={14} className="text-slate-400" />
                   {t("jobDetails.hoursWorked", { hours: "" })}
                 </span>
-                <span className="font-bold text-brand-700">{attendance.totalHours}h</span>
+                <span className="font-black text-indigo-950">{attendance.totalHours}h</span>
               </div>
             )}
           </div>
@@ -532,27 +541,33 @@ export const WorkerJobDetailsPage = () => {
       {/* ── Actions ── */}
       <div className="space-y-3">
         {!application && (
-          <Button fullWidth onClick={handleApply} loading={action === "applying"}>
+          <Button 
+            fullWidth 
+            onClick={handleApply} 
+            loading={action === "applying"}
+            className="flex items-center justify-center gap-2 shadow-sm shadow-indigo-100 transition-all hover:shadow-indigo-200"
+          >
             {t("jobDetails.applyForJob")}
           </Button>
         )}
 
         {application?.status === "APPLIED" && (
-          <div className="space-y-2">
-            <div className="rounded-2xl bg-brand-50 border border-brand-100 p-4 text-center flex items-center justify-center gap-2">
-              <Clock size={15} className="text-brand-500" />
-              <p className="text-sm font-semibold text-brand-700">{t("jobDetails.applicationPending")}</p>
+          <div className="space-y-3">
+            <div className="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-center flex items-center justify-center gap-2">
+              <Clock size={15} className="text-indigo-650 animate-pulse" />
+              <p className="text-xs font-bold text-indigo-700">{t("jobDetails.applicationPending")}</p>
             </div>
             <Button
               fullWidth
               variant="outline"
               onClick={() => setConfirmOpen(true)}
               disabled={!canWithdraw}
+              className="border-slate-300 text-slate-705 hover:bg-slate-50"
             >
               {t("jobDetails.withdrawApplication", "Withdraw Application")}
             </Button>
             {!canWithdraw && (
-              <p className="text-xs text-center text-red-500 font-medium">
+              <p className="text-[10px] text-center text-rose-600 font-bold uppercase tracking-wider">
                 {t("jobDetails.withdrawLockedMessage", "Cannot withdraw within 10 hours of job start")}
               </p>
             )}
@@ -560,30 +575,34 @@ export const WorkerJobDetailsPage = () => {
         )}
 
         {application?.status === "REJECTED" && (
-          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-center flex items-center justify-center gap-2">
-            <XCircle size={15} className="text-slate-400" />
-            <p className="text-sm font-semibold text-slate-600">{t("jobDetails.applicationRejected")}</p>
+          <div className="rounded-2xl bg-rose-50 border border-rose-100 p-4 text-center flex items-center justify-center gap-2">
+            <XCircle size={15} className="text-rose-500" />
+            <p className="text-xs font-bold text-rose-700">{t("jobDetails.applicationRejected")}</p>
           </div>
         )}
 
         {application?.status === "SELECTED" && !attendance && (
-          <div className="space-y-2">
-            <Button fullWidth onClick={handleCheckIn} loading={action === "checking-in"}>
-              <span className="flex items-center justify-center gap-2">
-                <LogIn size={16} />
-                {t("jobDetails.checkInBtn")}
-              </span>
+          <div className="space-y-3">
+            <Button 
+              fullWidth 
+              onClick={handleCheckIn} 
+              loading={action === "checking-in"}
+              className="flex items-center justify-center gap-2 shadow-sm shadow-indigo-100 transition-all hover:shadow-indigo-200"
+            >
+              <LogIn size={16} />
+              {t("jobDetails.checkInBtn")}
             </Button>
             <Button
               fullWidth
               variant="outline"
               onClick={() => setConfirmOpen(true)}
               disabled={!canWithdraw}
+              className="border-slate-300 text-slate-705 hover:bg-slate-50"
             >
               {t("jobDetails.withdrawSelection", "Withdraw from Selection")}
             </Button>
             {!canWithdraw && (
-              <p className="text-xs text-center text-red-500 font-medium">
+              <p className="text-[10px] text-center text-rose-600 font-bold uppercase tracking-wider">
                 {t("jobDetails.withdrawLockedMessage", "Cannot withdraw within 10 hours of job start")}
               </p>
             )}
@@ -591,39 +610,40 @@ export const WorkerJobDetailsPage = () => {
         )}
 
         {attendance?.status === "CHECKED_IN" && (
-          <Button fullWidth onClick={handleCheckOut} loading={action === "checking-out"} className="bg-brand-700 hover:bg-brand-800">
-            <span className="flex items-center justify-center gap-2">
-              <LogOut size={16} />
-              {t("jobDetails.checkOutBtn")}
-            </span>
+          <Button 
+            fullWidth 
+            onClick={handleCheckOut} 
+            loading={action === "checking-out"} 
+            className="flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white shadow-sm shadow-amber-100 transition-all hover:shadow-amber-200"
+          >
+            <LogOut size={16} />
+            {t("jobDetails.checkOutBtn")}
           </Button>
         )}
 
         {attendance?.status === "PENDING_REVIEW" && (
-          <Button fullWidth variant="secondary" disabled>
-            <span className="flex items-center justify-center gap-2">
-              <Clock size={16} />
-              {t("jobDetails.waitingForEmployerReview")}
-            </span>
+          <Button fullWidth variant="secondary" disabled className="bg-slate-100 border border-slate-200 text-slate-500 flex items-center justify-center gap-2">
+            <Clock size={16} />
+            {t("jobDetails.waitingForEmployerReview")}
           </Button>
         )}
 
         {/* Payment panel */}
         {attendance?.status === "APPROVED" && (
-          <div className="space-y-3 rounded-2xl bg-brand-50 border border-brand-200 p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-bold text-brand-800 flex items-center gap-1.5">
-                <ShieldCheck size={16} className="text-brand-600" />
+          <div className="space-y-4 rounded-3xl bg-indigo-50/50 border border-indigo-100 p-5 shadow-sm">
+            <div className="flex items-center justify-between border-b border-indigo-100/50 pb-3">
+              <p className="text-sm font-extrabold text-indigo-950 flex items-center gap-1.5">
+                <ShieldCheck size={16} className="text-indigo-650" />
                 {t("jobDetails.workApproved")}
               </p>
-              <StatusBadge status={payment?.status ?? "PENDING"} />
+              <StatusBadge status={payment?.status ?? "PENDING"} size="lg" />
             </div>
-            <p className="text-xs text-brand-600">{t("jobDetails.approvedText", { wage: `₹${job.wage}` })}</p>
+            <p className="text-xs text-indigo-650 leading-relaxed font-semibold">{t("jobDetails.approvedText", { wage: `₹${job.wage}` })}</p>
 
             {payment?.status === "COMPLETED" || payment?.workerConfirmed ? (
               <>
-                <div className="text-center py-3 text-sm font-bold text-brand-800 bg-brand-100 rounded-xl flex items-center justify-center gap-2">
-                  <CheckCircle2 size={16} className="text-brand-600" />
+                <div className="text-center py-3 text-sm font-extrabold text-indigo-950 bg-indigo-100/50 rounded-xl flex items-center justify-center gap-2 border border-indigo-100">
+                  <CheckCircle2 size={16} className="text-indigo-650" />
                   {t("jobDetails.paymentReceivedConfirmed")}
                 </div>
                 {job.status === "COMPLETED" && (() => {
@@ -632,15 +652,15 @@ export const WorkerJobDetailsPage = () => {
                   );
                   if (existingRating) {
                     return (
-                      <div className="rounded-xl bg-brand-50 border border-brand-100 p-3 flex items-center gap-1.5 text-xs text-brand-700">
-                        <Star size={12} className="text-brand-400 fill-brand-400" />
+                      <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 flex items-center gap-1.5 text-xs font-bold text-amber-700">
+                        <Star size={12} className="text-amber-550 fill-amber-400" />
                         {t("jobDetails.youRatedEmployer", { value: existingRating.ratingValue })}
                       </div>
                     );
                   }
                   return (
-                    <div className="bg-brand-50 border border-brand-100 rounded-xl p-4">
-                      <p className="text-xs text-brand-600 mb-3 font-medium">
+                    <div className="bg-indigo-50/20 border border-indigo-100/40 rounded-2xl p-4">
+                      <p className="text-xs text-indigo-650 mb-3 font-semibold">
                         {t("jobDetails.rateExperienceWith", { name: job.employer.name })}
                       </p>
                       <RatingForm jobId={Number(jobId)} toUserId={job.employer.userId} onSuccess={fetchData} />
@@ -653,11 +673,10 @@ export const WorkerJobDetailsPage = () => {
                 fullWidth
                 onClick={handleConfirmPaymentReceived}
                 loading={action === "confirming-payment"}
+                className="flex items-center justify-center gap-2 shadow-sm shadow-indigo-100 hover:shadow-indigo-200"
               >
-                <span className="flex items-center justify-center gap-2">
-                  <IndianRupee size={16} />
-                  {t("jobDetails.markPaymentReceived")}
-                </span>
+                <IndianRupee size={16} />
+                {t("jobDetails.markPaymentReceived")}
               </Button>
             )}
           </div>
@@ -665,11 +684,9 @@ export const WorkerJobDetailsPage = () => {
 
         {attendance?.status === "ISSUE_REPORTED" && (
           <div className="space-y-3">
-            <Button fullWidth variant="secondary" disabled>
-              <span className="flex items-center justify-center gap-2">
-                <AlertTriangle size={16} />
-                {t("jobDetails.issueReported")}
-              </span>
+            <Button fullWidth variant="secondary" disabled className="bg-rose-50 border border-rose-100 text-rose-700 flex items-center justify-center gap-2">
+              <AlertTriangle size={16} />
+              {t("jobDetails.issueReported")}
             </Button>
 
             {attendance.disputes && attendance.disputes.length > 0 ? (
@@ -684,11 +701,10 @@ export const WorkerJobDetailsPage = () => {
                 variant="outline"
                 onClick={() => setDisputeModalOpen(true)}
                 loading={action === "raising-dispute"}
+                className="border-rose-200 text-rose-700 hover:bg-rose-50 flex items-center justify-center gap-2"
               >
-                <span className="flex items-center justify-center gap-2">
-                  <Flag size={16} />
-                  {t("jobDetails.raiseDispute")}
-                </span>
+                <Flag size={16} />
+                {t("jobDetails.raiseDispute")}
               </Button>
             )}
           </div>
