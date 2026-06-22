@@ -22,7 +22,7 @@ exports.jobApplicationService = {
             throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, "Job is not open for applications");
         }
         // Check if worker is already selected for any job on the same day
-        const selectedApplicationsOnSameDay = await prisma_1.prisma.jobApplication.findFirst({
+        const selectedApplicationsOnSameDay = await prisma_1.prisma.jobApplication.findMany({
             where: {
                 workerId,
                 status: "SELECTED",
@@ -31,11 +31,42 @@ exports.jobApplicationService = {
                 },
             },
             include: {
-                job: true,
+                job: {
+                    include: {
+                        attendance: {
+                            where: {
+                                workerId,
+                            },
+                        },
+                        payments: {
+                            where: {
+                                workerId,
+                            },
+                        },
+                    },
+                },
             },
         });
-        if (selectedApplicationsOnSameDay) {
-            throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, `You cannot apply to this job because you are already selected for another job ("${selectedApplicationsOnSameDay.job.title}") on this day.`);
+        const activeSelectedApplications = selectedApplicationsOnSameDay.filter((app) => {
+            // If the job itself is COMPLETED or CANCELLED, it's not active
+            if (app.job.status === "COMPLETED" || app.job.status === "CANCELLED") {
+                return false;
+            }
+            // If worker's attendance is APPROVED, they have completed the job
+            const workerAttendance = app.job.attendance.find((a) => a.workerId === workerId);
+            if (workerAttendance && workerAttendance.status === "APPROVED") {
+                return false;
+            }
+            // If payment is COMPLETED, they have completed the job
+            const workerPayment = app.job.payments.find((p) => p.workerId === workerId);
+            if (workerPayment && workerPayment.status === "COMPLETED") {
+                return false;
+            }
+            return true;
+        });
+        if (activeSelectedApplications.length > 0) {
+            const activeApp = activeSelectedApplications[0];
+            throw new response_1.ApiError(constants_1.HTTP_STATUS.BAD_REQUEST, `You cannot apply to this job because you are already selected for another job ("${activeApp.job.title}") on this day.`);
         }
         // Create application
         const application = await prisma_1.prisma.jobApplication.create({

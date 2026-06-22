@@ -66,6 +66,7 @@ export const initializeSocketServer = (
       const token = extractToken(rawToken);
 
       if (!token) {
+        console.log("[Socket] Connection rejected: No token provided");
         return next(new Error("Unauthorized socket connection"));
       }
 
@@ -77,21 +78,26 @@ export const initializeSocketServer = (
         mobileNumber: payload.mobileNumber,
       };
 
+      console.log(`[Socket] Authentication successful for User ID: ${payload.userId}`);
       return next();
-    } catch (_error) {
+    } catch (error) {
+      console.error("[Socket] Authentication failed:", error);
       return next(new Error("Unauthorized socket connection"));
     }
   });
 
   socketServer.on("connection", (socket) => {
     const user = (socket.data as SocketData).user;
+    console.log(`[Socket] New connection established. User ID: ${user?.userId}, Role: ${user?.role}`);
 
     if (!user) {
+      console.log(`[Socket] Connection rejected: No user payload in socket.data`);
       socket.disconnect(true);
       return;
     }
 
     socket.join(`${USER_ROOM_PREFIX}${user.userId}`);
+    console.log(`[Socket] User ${user.userId} joined room: ${USER_ROOM_PREFIX}${user.userId}`);
 
     if (user.role === "WORKER") {
       socket.on("location:update", (coords: { latitude: number; longitude: number }) => {
